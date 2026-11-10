@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "richgram"
 dynamic = ["version", "readme"]
-description = "richgram: Telegram Bot API 10.3 rich messages (tables, details, colored buttons) for Pyrogram bots"
+description = "richgram: Telegram Bot API 10.3 rich messages and 10.4 HTML widgets for Pyrogram bots"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]

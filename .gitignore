@@ -8,3 +8,10 @@ dist/
 *.session
 *.session-journal
 .env
+
+*.env
+.env.*
+.env.bak
+*.pyc
+bot_workspace/
+*.bak

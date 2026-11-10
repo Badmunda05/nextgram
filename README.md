@@ -4,7 +4,9 @@ Telegram Bot API 10.3 rich messages for Pyrogram, Pyrofork and Kurigram bots:
 tables, details, lists, colored buttons, drafts and ephemeral messages, with an
 automatic plain-text fallback when a rich message is rejected. The same
 builders also work over MTProto via the optional Telethon transport
-(`richgram.telethon`).
+(`richgram.telethon`). `richgram.widgets` adds Bot API 10.4 HTML widgets
+(`sendWidget` and friends) on top — see [Widgets](#widgets-bot-api-104)
+below.
 
 ## Install
 
@@ -523,6 +525,157 @@ Telethon transport (`from richgram.telethon import ...`):
 `telethon_block_todo_list`, `telethon_block_preformatted`, `telethon_rich_send`, `telethon_rich_send_blocks`, `telethon_rich_reply`,
 `telethon_rich_edit`
 
+Widgets (`from richgram import ...`, or `from richgram.widgets import ...`):
+`WIDGET_NATIVE_AVAILABLE`, `MAX_WIDGET_HTML_COMPRESSED_BYTES`,
+`MAX_WIDGET_QUERY_REQUEST_BYTES`, `MAX_WIDGET_ANSWER_DATA_BYTES`,
+`MIN_WIDGET_CACHE_TIME`, `MAX_WIDGET_CACHE_TIME`, `MAX_WALLET_MESSAGES`,
+`WidgetAPIError`, `WalletCard`, `WalletSentTransaction`,
+`WalletSignDataResult`, `WidgetQuery`, `SharedWidgetQuery`,
+`widget_html_compressed_size`, `validate_widget_html`,
+`validate_nanoton_amount`, `parse_widget_query`,
+`parse_shared_widget_query`, `extract_widget_query`,
+`build_wallet_transaction_answer`, `send_widget`, `send_shared_widget`,
+`edit_message_widget_data`, `edit_shared_widget_data`,
+`answer_widget_query`, `input_widget_message_content`,
+`input_shared_widget_message_content`
+
+## Widgets (Bot API 10.4)
+
+`richgram.widgets` adds Telegram's **widgets**: small, sandboxed HTML
+blocks a bot draws inside a message (`core.telegram.org/bots/widgets`).
+This is a separate feature from the rich messages above — it does not
+need `RICH_AVAILABLE`/Kurigram's rich-message support, and nothing in
+this section changes how `rich_send` and friends behave.
+
+```python
+from richgram import send_widget, answer_widget_query, parse_widget_query
+
+msg = await send_widget(
+    client, chat_id,
+    "<!doctype html><html><body>Hello from a widget</body></html>",
+    allow_queries=True,
+)
+```
+
+Every function in this module talks to the plain Bot HTTP API directly
+(`https://api.telegram.org/bot<token>/...`), the same escape hatch
+`rich_send_blocks` already uses for typed blocks — it does not depend on
+your Pyrogram/Kurigram build having native MTProto support for widgets
+(no known release does yet). Pass `token=...` explicitly, or use a client
+that already exposes `.bot_token` (Kurigram bot clients do). If a future
+Kurigram release adds `Client.send_widget` and friends, this module
+prefers them automatically (`WIDGET_NATIVE_AVAILABLE`) and only falls
+back to the raw HTTP call on failure or absence.
+
+```python
+from richgram import send_shared_widget, edit_message_widget_data, edit_shared_widget_data
+
+await send_shared_widget(client, chat_id, widget_id)
+await edit_message_widget_data(client, chat_id=chat_id, message_id=msg["message_id"], public_data={"score": 10})
+await edit_shared_widget_data(client, widget_id, public_data={"score": 11}, cache_time=30)
+```
+
+- `send_widget(client, chat_id, html, *, allow_queries=None, is_shared=None, width=None, height=None, ...)`
+  — `html` is checked against the documented 4096-byte (zlib level 9
+  compressed) limit before anything is sent
+  (`widget_html_compressed_size(html)` to check it yourself).
+- `send_shared_widget(client, chat_id, widget_id, ...)` re-sends an
+  existing shared widget, the way a photo is re-sent by `file_id`.
+- `edit_message_widget_data(client, *, chat_id=None, message_id=None, inline_message_id=None, chat_data=None, public_data=None)`
+  — exactly one of (`chat_id` + `message_id`) or `inline_message_id`.
+- `edit_shared_widget_data(client, widget_id, *, public_data=None, cache_time=None)`
+  — `cache_time` is 5–3600 seconds.
+- `answer_widget_query(client, widget_query_id, data=None, *, received_at=None)`
+  — `data` is UTF-8 text up to 1024 bytes; pass `received_at=time.time()`
+  (captured when the query arrived) to get an early `ValueError` instead
+  of a late rejection if you're past Telegram's 15-second window.
+
+All five raise `WidgetAPIError` (carrying `.error_code`/`.description`)
+on an `ok: false` Bot API response, and `ValueError` on a bad argument —
+unlike the rich-message senders above, they do not swallow failures into
+`None`.
+
+### Receiving `widget_query` / `shared_widget_query`
+
+No known Pyrogram/Kurigram release parses these updates into Python
+objects yet, so there is no `@client.on_widget_query()`-style handler
+here. What richgram provides instead is a parser for the raw Bot-API-JSON
+shape of the update — useful whether that JSON comes from a webhook, a
+`getUpdates` poll you run yourself, or (once a library adds support) an
+object a future Kurigram hands you:
+
+```python
+from richgram import extract_widget_query, answer_widget_query
+
+query = extract_widget_query(update)  # update: a dict, or an object exposing .widget_query
+if query is not None:
+    await answer_widget_query(client, query.id, data="pong")
+```
+
+`extract_widget_query` accepts a whole update dict (`{"update_id": ..., "widget_query": {...}}`),
+a bare `widget_query`/`shared_widget_query` dict, or an object exposing
+`.widget_query`/`.shared_widget_query`, and returns a `WidgetQuery`, a
+`SharedWidgetQuery`, or `None`. Use `parse_widget_query(data)` /
+`parse_shared_widget_query(data)` directly if you already know which one
+you have.
+
+A `WidgetQuery` carries `id`, `from_user`, `chat_instance`, `widget_id`,
+`data` (bytes), and either `chat`+`message_id` or `inline_message_id`.
+Its `.wallet` field is a `WalletCard`, `WalletSentTransaction` or
+`WalletSignDataResult` when the query is a TON Wallet response, parsed
+from the `type` payload the guide describes. A `SharedWidgetQuery` (from
+a forward of a shared widget) carries only `id`, `from_user`, `widget_id`
+and `data`.
+
+### TON Wallet transactions
+
+```python
+from richgram import build_wallet_transaction_answer
+
+answer = build_wallet_transaction_answer(
+    valid_until=int(time.time()) + 300,
+    messages=[{"address": "EQ...", "amount": 1_000_000_000}],  # 1 TON, in nanotons
+)
+```
+
+`build_wallet_transaction_answer` builds the TON Connect-shaped
+`{valid_until, messages}` object the guide describes for answering a
+wallet request; 1–255 messages, each `amount` normalised to a decimal
+nanoton string (`validate_nanoton_amount`).
+
+### Inline mode
+
+`input_widget_message_content(html, ...)` and
+`input_shared_widget_message_content(widget_id)` build the
+`InputWidgetMessageContent` / `InputSharedWidgetMessageContent` dicts the
+guide names for `answerInlineQuery`; richgram does not wrap
+`answerInlineQuery` itself (it already exists on Pyrogram/Kurigram
+clients), so pass these as one of the `results` there.
+
+### What this module does **not** cover, and why
+
+- As of this writing, `core.telegram.org/bots/api` (the full method/type
+  reference) still tops out at **Bot API 10.3** and does not list
+  `sendWidget`. Everything above is built against the separate, already
+  published guide page at `core.telegram.org/bots/widgets`, which does
+  document these methods, fields and limits — but that page is a guide,
+  not the full parameter-table reference other methods get, so a few
+  parameters' exact required/optional status was not spelled out there.
+  This module validates every limit the guide page does pin down and
+  passes everything else through unchanged; see the docstring at the top
+  of `richgram/widgets.py` for the full list of what is, and isn't,
+  confirmed.
+- **Test server vs. production**: this module does not special-case
+  Telegram's test-server token namespace (`.../bot<token>/test/...`).
+  Pass a test-server token via `token=...`/`api_base=...` and it behaves
+  the same way, but size/rate limits and feature availability there are
+  not guaranteed to match production, and this module cannot tell which
+  one it's talking to.
+- Nothing here has been exercised against a live bot token or a real
+  widget; the test suite (`tests/unit/test_widgets.py`) mocks the HTTP
+  layer against the shapes the guide documents. Verify against a real bot
+  before shipping.
+
 ## Demo bot
 
 `bot.py` is a small demo bot (`/start` with shuffling button colours):
@@ -555,6 +708,9 @@ connection. `tests/integrations` sends a real message when `API_ID`,
 - For the Telethon transport: **Telethon >= 1.45** (`pip install "richgram[telethon]"`).
   `TELETHON_RICH_AVAILABLE` is `True` when the installed Telethon build has
   the rich-message types.
+- For widgets: **httpx** (`pip install "richgram[http]"`), used for the
+  direct Bot HTTP API calls `richgram.widgets` makes. A bot token, either
+  passed as `token=...` or read from `client.bot_token`.
 
 ## Credits
 
