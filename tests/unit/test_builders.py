@@ -1,5 +1,5 @@
-import richgram
-from richgram import (
+import nextgram
+from nextgram import (
     rich_anchor,
     rich_code,
     rich_details,
@@ -21,8 +21,8 @@ from richgram import (
 
 
 def test_version_is_a_string():
-    assert isinstance(richgram.__version__, str)
-    assert richgram.__version__.count(".") == 2
+    assert isinstance(nextgram.__version__, str)
+    assert nextgram.__version__.count(".") == 2
 
 
 def test_esc_escapes_html_but_not_quotes():

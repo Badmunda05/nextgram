@@ -3,7 +3,7 @@ import random
 
 from pyrogram import Client, filters
 
-from richgram import (
+from nextgram import (
     RICH_AVAILABLE,
     rich_button,
     rich_button_row,
@@ -31,22 +31,22 @@ def random_style() -> str:
 
 def home_text() -> str:
     return (
-        rich_heading("richgram demo", level=3)
+        rich_heading("nextgram demo", level=3)
         + rich_note("Buttons change colour every time you tap Shuffle. " + rich_emoji_named("fire"))
         + rich_kv_table([
-            ("Library", "richgram"),
+            ("Library", "nextgram"),
             ("Rich support", "yes" if RICH_AVAILABLE else "no"),
         ])
         + rich_todo_list([
-            ("Clone richgram", True),
+            ("Clone nextgram", True),
             ("Try the demo bot", True),
             ("Build your own checklist", False),
         ])
         + rich_details_group([
-            ("What is this?", "A test bot for the richgram package."),
+            ("What is this?", "A test bot for the nextgram package."),
             ("Multiple collapsibles", "Two sections, one message — each opens on its own."),
         ], open_first=True)
-        + rich_pre_rich("<b>pip</b> install <code>richgram</code>", language="bash")
+        + rich_pre_rich("<b>pip</b> install <code>nextgram</code>", language="bash")
         + rich_page_index(1, 1, total=3, label="Demo")
     )
 
@@ -56,7 +56,7 @@ def home_kb() -> str:
         rich_button_row(
             rich_button("🎨 Shuffle colours", callback_data="shuffle", style=random_style()),
             rich_button("🏓 Ping", callback_data="ping", style=random_style()),
-            rich_button("📋 Copy repo", copy_text="https://github.com/Badmunda05/richgram", style=random_style()),
+            rich_button("📋 Copy repo", copy_text="https://github.com/Badmunda05/nextgram", style=random_style()),
         )
         + rich_button_row(
             rich_button("🍬 Support", url="https://t.me/BadmundaXd", style=random_style()),
@@ -86,7 +86,7 @@ async def close(_, cbq):
 
 def create_app() -> Client:
     app = Client(
-        "richgram_demo",
+        "nextgram_demo",
         api_id=int(os.getenv("API_ID", "0")),
         api_hash=os.getenv("API_HASH"),
         bot_token=os.getenv("BOT_TOKEN"),
@@ -100,5 +100,5 @@ def create_app() -> Client:
 
 
 if __name__ == "__main__":
-    print("richgram demo bot started, press Ctrl+C to stop")
+    print("nextgram demo bot started, press Ctrl+C to stop")
     create_app().run()

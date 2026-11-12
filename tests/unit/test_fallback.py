@@ -1,5 +1,5 @@
-from richgram import rich_button, rich_caption, rich_to_plain
-from richgram import rich_ui
+from nextgram import rich_button, rich_caption, rich_to_plain
+from nextgram import rich_ui
 
 
 def test_detects_rich_only_tags():

@@ -7,7 +7,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 
 def load_bot():
-    spec = importlib.util.spec_from_file_location("richgram_demo_bot", ROOT / "bot.py")
+    spec = importlib.util.spec_from_file_location("nextgram_demo_bot", ROOT / "bot.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -18,7 +18,7 @@ bot = load_bot()
 
 def test_home_text_has_the_demo_content():
     text = bot.home_text()
-    assert "<h3>richgram demo</h3>" in text
+    assert "<h3>nextgram demo</h3>" in text
     assert "<table" in text
     assert "<details>" in text
 
@@ -49,7 +49,7 @@ async def test_start_replies_with_rich_message_and_buttons():
     with rich_available(True):
         await bot.start(None, message)
     sent = message._client.last("send_rich_message")
-    assert "richgram demo" in sent["rich_message"].html
+    assert "nextgram demo" in sent["rich_message"].html
     assert "<tg-button-row>" in sent["rich_message"].html
     assert sent["reply_parameters"].message_id == message.id
 
@@ -82,5 +82,5 @@ async def test_start_still_answers_when_rich_is_unavailable():
     with rich_available(False):
         await bot.start(None, message)
     sent = message._client.last("send_message")
-    assert "richgram demo" in sent["text"]
+    assert "nextgram demo" in sent["text"]
     assert "<tg-button" not in sent["text"]

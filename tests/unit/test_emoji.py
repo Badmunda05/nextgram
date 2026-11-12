@@ -1,6 +1,6 @@
 import pytest
 
-from richgram import (
+from nextgram import (
     clear_custom_emojis,
     custom_emoji_names,
     expand_emoji_shortcodes,
@@ -13,7 +13,7 @@ from richgram import (
     rich_text_custom_emoji,
     rich_to_plain,
 )
-from richgram import rich_ui
+from nextgram import rich_ui
 from tests.helpers import FakeClient, rich_available
 
 FIRE_ID = "5368324170671202286"

@@ -2,15 +2,15 @@ import pytest
 from pyrogram import types as kurigram_types
 from telethon import types as telethon_types
 
-from richgram import (
+from nextgram import (
     rich_block_todo_list,
     rich_send,
     rich_to_plain,
     rich_todo_list,
     rich_todo_list_markdown,
 )
-from richgram import rich_ui
-from richgram.telethon import telethon_block_todo_list, telethon_rich_send_blocks
+from nextgram import rich_ui
+from nextgram.telethon import telethon_block_todo_list, telethon_rich_send_blocks
 from tests.helpers import FakeClient, rich_available
 
 from tests.unit.test_telethon import FakeTelethonClient

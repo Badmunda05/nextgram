@@ -1,17 +1,11 @@
-__pycache__/
-*.py[cod]
-*.egg-info/
-build/
-dist/
-.pytest_cache/
-.venv/
-*.session
-*.session-journal
-.env
 
+.env
 *.env
 .env.*
 .env.bak
+*.session
+*.session-journal
+__pycache__/
 *.pyc
 bot_workspace/
 *.bak

@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from richgram import (
+from nextgram import (
     RichDraft,
     ephemeral_delete,
     ephemeral_edit,

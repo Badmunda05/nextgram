@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from types import SimpleNamespace
 
-from richgram import rich_ui
+from nextgram import rich_ui
 
 
 @contextmanager

@@ -1,8 +1,8 @@
 import pytest
 
-from richgram import rich_button, rich_button_row
-from richgram import rich_ui
-from richgram.telethon import telethon_rich_send
+from nextgram import rich_button, rich_button_row
+from nextgram import rich_ui
+from nextgram.telethon import telethon_rich_send
 
 from tests.unit.test_telethon import FakeTelethonClient
 

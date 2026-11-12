@@ -1,4 +1,4 @@
-"""richgram Telethon transport: Bot API 10.3 rich messages over MTProto.
+"""nextgram Telethon transport: Bot API 10.3 rich messages over MTProto.
 
 Pyrogram/Kurigram send rich messages through ``Client.send_rich_message``.
 Telethon has no such method, but the same rich payload travels over MTProto
@@ -10,7 +10,7 @@ ordinary ``message`` field alongside the rich payload, so the adapter fills
 it with the same rich source text; it is not a second transport.
 
 This module is optional: ``telethon`` is an extra (``pip install
-richgram[telethon]``) and importing ``richgram`` never requires it. All
+nextgram[telethon]``) and importing ``nextgram`` never requires it. All
 HTML builders (``rich_heading``, ``rich_table``, ``rich_details``,
 ``rich_emoji``, ...) are transport-independent, so the same text works on
 both transports; only the block objects differ (Telethon uses
@@ -35,7 +35,7 @@ from .rich_ui import (
     _todo_items,
 )
 
-logger = logging.getLogger("richgram.telethon")
+logger = logging.getLogger("nextgram.telethon")
 
 __all__ = [
     "TELETHON_RICH_AVAILABLE",
@@ -66,7 +66,7 @@ def _load_telethon():
         from telethon import functions, types
     except ImportError as exc:
         raise RuntimeError(
-            "Telethon support needs telethon installed: pip install richgram[telethon]"
+            "Telethon support needs telethon installed: pip install nextgram[telethon]"
         ) from exc
     if not hasattr(types, "InputRichMessageHTML") or not hasattr(
         functions.messages, "SendMessageRequest"

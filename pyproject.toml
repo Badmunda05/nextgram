@@ -3,16 +3,16 @@ requires = ["setuptools>=77.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "richgram"
+name = "nextgram"
 dynamic = ["version", "readme"]
-description = "richgram: Telegram Bot API 10.3 rich messages and 10.4 HTML widgets for Pyrogram bots"
+description = "nextgram: Telegram Bot API 10.3 rich messages and 10.4 HTML widgets, for Pyrogram, Pyrofork, Kurigram, Telethon, aiogram and python-telegram-bot bots"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [
   { name = "BadmundaXd", email = "munda.bad1322@gmail.com" }
 ]
-keywords = ["telegram", "rich message", "bot api", "pyrogram", "kurigram", "inline buttons"]
+keywords = ["telegram", "rich message", "bot api", "widgets", "pyrogram", "pyrofork", "kurigram", "telethon", "aiogram", "python-telegram-bot", "inline buttons"]
 classifiers = [
   "Operating System :: OS Independent",
   "Programming Language :: Python",
@@ -20,23 +20,26 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
   "Topic :: Communications :: Chat",
 ]
-dependencies = ["kurigram"]
+dependencies = ["httpx"]
 
 [project.optional-dependencies]
-http = ["httpx"]
+pyrogram = ["kurigram"]
 telethon = ["telethon>=1.45"]
-test = ["pytest>=8", "pytest-asyncio>=0.24", "telethon>=1.45"]
+aiogram = ["aiogram>=3.0"]
+ptb = ["python-telegram-bot>=21.0"]
+all = ["kurigram", "telethon>=1.45", "aiogram>=3.0", "python-telegram-bot>=21.0"]
+test = ["pytest>=8", "pytest-asyncio>=0.24", "telethon>=1.45", "kurigram"]
 
 [project.urls]
-Homepage = "https://github.com/Badmunda05/richgram"
-Source   = "https://github.com/Badmunda05/richgram"
+Homepage = "https://github.com/Badmunda05/nextgram"
+Source   = "https://github.com/Badmunda05/nextgram"
 Telegram = "https://t.me/BadmundaXd"
 
 [tool.setuptools]
-packages = ["richgram"]
+packages = ["nextgram"]
 
 [tool.setuptools.dynamic]
-version = { attr = "richgram.__version__" }
+version = { attr = "nextgram.__version__" }
 readme  = { file = ["README.md"], content-type = "text/markdown" }
 
 [tool.pytest.ini_options]

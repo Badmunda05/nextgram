@@ -4,9 +4,34 @@ import html as _html
 import logging
 import re
 
-from pyrogram.enums import ParseMode
-from pyrogram.errors import MessageNotModified
-from pyrogram.types import ReplyParameters
+"""Pyrogram/Pyrofork/Kurigram are three distributions of the same package
+name (``pyrogram``), so every import below resolves to whichever one is
+installed — no separate code path is needed per fork. All three imports
+are optional: this module (and so ``nextgram`` as a whole) imports cleanly
+with none of them installed, for callers who only use ``nextgram.telethon``,
+``nextgram.aiogram_rich``, ``nextgram.ptb_rich`` or ``nextgram.widgets``.
+The ``_Pyrogram*`` senders below simply aren't usable without the real
+package — calling one then raises the normal ``AttributeError``/``TypeError``
+you'd expect from a ``None`` placeholder, rather than failing at import.
+"""
+try:
+    from pyrogram.enums import ParseMode
+except ImportError:
+    ParseMode = None
+
+try:
+    from pyrogram.errors import MessageNotModified
+except ImportError:
+    class MessageNotModified(Exception):
+        """Stand-in used only so ``except MessageNotModified:`` stays
+        valid when pyrogram isn't installed; it can never actually be
+        raised in that case, since there is no pyrogram client to raise
+        it."""
+
+try:
+    from pyrogram.types import ReplyParameters
+except ImportError:
+    ReplyParameters = None
 
 try:
     from pyrogram.types import InputRichMessage
@@ -63,7 +88,7 @@ try:
 except ImportError:
     RichTextCode = None
 
-logger = logging.getLogger("richgram")
+logger = logging.getLogger("nextgram")
 
 __all__ = [
     "RICH_AVAILABLE",
@@ -251,7 +276,7 @@ def rich_pre_rich(body: str, language: str = None) -> str:
     so inline markup nests inside the code block — bold a keyword, mark a
     value as inline code::
 
-        rich_pre_rich("<b>pip</b> install <code>richgram</code>", language="bash")
+        rich_pre_rich("<b>pip</b> install <code>nextgram</code>", language="bash")
 
     Escape user-supplied text with ``rich_esc(...)`` before composing the
     body; data is never markup. The language travels in the
@@ -355,7 +380,7 @@ def rich_block_preformatted(text, language: str = None):
     ``rich_text_code``::
 
         rich_block_preformatted([
-            ("bold", "pip"), " install ", ("code", "richgram"),
+            ("bold", "pip"), " install ", ("code", "nextgram"),
         ], language="bash")
 
     A fenced Markdown block is literal, so this nesting exists only in the
@@ -557,14 +582,14 @@ def rich_emoji(document_id, alt: str) -> str:
     the shape is validated here (digits only, fits in a signed 64-bit int).
 
     ``alt`` is the plain emoji shown where the custom emoji cannot be
-    displayed (notifications, forwards by non-premium users, and richgram's
+    displayed (notifications, forwards by non-premium users, and nextgram's
     plain-text fallback). It is required: Telegram requires a valid emoji
     as the content of the tag.
 
     Eligibility (Bot API 9.4+): a bot may send custom emoji if its owner
     has Telegram Premium (direct messages to private/group/supergroup
     chats) or if the bot purchased additional usernames on Fragment (also
-    channels). richgram cannot check eligibility; an ineligible send is
+    channels). nextgram cannot check eligibility; an ineligible send is
     rejected by Telegram and :func:`rich_send` falls back to ``alt``.
     """
     emoji_id = _validate_custom_emoji_id(document_id)
@@ -896,7 +921,7 @@ def rich_details_nested(summary: str, body: str = "", children=(), open: bool = 
     prebuilt ``rich_details(...)`` strings. Example::
 
         rich_details_nested("Guide", "Start here.", children=[
-            ("Install", "pip install richgram"),
+            ("Install", "pip install nextgram"),
             {"summary": "Advanced", "body": "", "children": [
                 ("Source", "Clone the repo and read rich_ui.py"),
             ]},

@@ -1,29 +1,52 @@
-# richgram
+# nextgram
 
-Telegram Bot API 10.3 rich messages for Pyrogram, Pyrofork and Kurigram bots:
-tables, details, lists, colored buttons, drafts and ephemeral messages, with an
-automatic plain-text fallback when a rich message is rejected. The same
-builders also work over MTProto via the optional Telethon transport
-(`richgram.telethon`). `richgram.widgets` adds Bot API 10.4 HTML widgets
-(`sendWidget` and friends) on top — see [Widgets](#widgets-bot-api-104)
-below.
+Telegram Bot API 10.3 rich messages — tables, details, lists, colored
+buttons, drafts and ephemeral messages, with an automatic plain-text
+fallback when a rich message is rejected — plus Bot API 10.4 HTML widgets
+(`sendWidget` and friends, see [Widgets](#widgets-bot-api-104) below), for
+six frameworks:
+
+| Framework | Module | Rich messages | Widgets |
+|---|---|---|---|
+| Pyrogram / Pyrofork / Kurigram | `nextgram.rich_ui` (also the top-level `nextgram.*` names) | native (`InputRichMessage`) when the installed build supports it, HTML fallback otherwise | yes |
+| Telethon | `nextgram.telethon` | native MTProto `rich_message` when the installed build supports it, HTML fallback otherwise | yes |
+| aiogram | `nextgram.aiogram_rich` | `sendRichMessage` over the plain Bot HTTP API, HTML fallback otherwise | yes |
+| python-telegram-bot | `nextgram.ptb_rich` | `sendRichMessage` over the plain Bot HTTP API, HTML fallback otherwise | yes |
+
+Pyrogram, Pyrofork and Kurigram are one family — three distributions of
+the exact same `pyrogram` package name — so one implementation already
+covers all three; there is nothing framework-specific left to add for
+them. `nextgram.widgets` is framework-agnostic by construction (it only
+ever needs a bot token) and already works unmodified from every framework
+above.
+
+Installing `nextgram` on its own needs none of Pyrogram, Pyrofork,
+Kurigram, Telethon, aiogram or python-telegram-bot — only `httpx`, for the
+HTTP calls `nextgram.widgets` (and the aiogram/python-telegram-bot rich
+senders) make. Each framework's own module is only imported when you
+import it, so a bot using just one framework never needs the others
+installed.
 
 ## Install
 
 ```bash
-pip install richgram
+pip install nextgram
 ```
 
-For the Telethon transport:
+With the framework you actually use:
 
 ```bash
-pip install "richgram[telethon]"
+pip install "nextgram[pyrogram]"      # Pyrogram, Pyrofork or Kurigram (one package: kurigram)
+pip install "nextgram[telethon]"
+pip install "nextgram[aiogram]"
+pip install "nextgram[ptb]"           # python-telegram-bot
+pip install "nextgram[all]"           # every framework, for trying things out
 ```
 
 Or straight from GitHub:
 
 ```bash
-pip install git+https://github.com/Badmunda05/richgram.git
+pip install git+https://github.com/Badmunda05/nextgram.git
 ```
 
 ## How to import
@@ -31,39 +54,39 @@ pip install git+https://github.com/Badmunda05/richgram.git
 Import only what you need (recommended):
 
 ```python
-from richgram import rich_send, rich_reply, rich_edit
-from richgram import rich_heading, rich_note, rich_table, rich_kv_table
-from richgram import rich_button, rich_button_row
+from nextgram import rich_send, rich_reply, rich_edit
+from nextgram import rich_heading, rich_note, rich_table, rich_kv_table
+from nextgram import rich_button, rich_button_row
 ```
 
-Or import the whole package and use the `richgram.` prefix:
+Or import the whole package and use the `nextgram.` prefix:
 
 ```python
-import richgram
+import nextgram
 
-text = richgram.rich_heading("Hello", level=3)
-await richgram.rich_send(client, chat_id, text)
+text = nextgram.rich_heading("Hello", level=3)
+await nextgram.rich_send(client, chat_id, text)
 ```
 
 Or import from the submodule directly:
 
 ```python
-from richgram.rich_ui import rich_send, rich_button
+from nextgram.rich_ui import rich_send, rich_button
 ```
 
 Check the version and whether your build supports rich messages:
 
 ```python
-import richgram
+import nextgram
 
-print(richgram.__version__)
-print(richgram.RICH_AVAILABLE)
+print(nextgram.__version__)
+print(nextgram.RICH_AVAILABLE)
 ```
 
 ## Quick example
 
 ```python
-from richgram import rich_send, rich_heading, rich_kv_table, rich_esc
+from nextgram import rich_send, rich_heading, rich_kv_table, rich_esc
 
 text = (
     rich_heading("Now Playing", level=3)
@@ -82,7 +105,7 @@ Buttons are part of the message HTML, so append them to the content
 (there is no `reply_markup`):
 
 ```python
-from richgram import rich_button, rich_button_row, rich_send
+from nextgram import rich_button, rich_button_row, rich_send
 
 buttons = (
     rich_button_row(
@@ -124,7 +147,7 @@ rich_button("Shuffle", callback_data="shuffle", style=style)
 The bottom line of a paginated message is an italic footer:
 
 ```python
-from richgram import rich_page_index
+from nextgram import rich_page_index
 
 rich_page_index(2, 5, total=42)              # Page 2 of 5 • total 42
 rich_page_index(2, 5)                        # Page 2 of 5
@@ -138,7 +161,7 @@ total 42`.
 ## Premium (custom) emoji
 
 ```python
-from richgram import rich_emoji, rich_send
+from nextgram import rich_emoji, rich_send
 
 await rich_send(client, chat_id, "Nice " + rich_emoji("5368324170671202286", "🔥") + " work!")
 ```
@@ -151,25 +174,25 @@ contains the emoji (its `custom_emoji` entity), from a sticker set
 (`Sticker.custom_emoji_id`), or verify one you have with:
 
 ```python
-from richgram import fetch_custom_emoji
+from nextgram import fetch_custom_emoji
 
 sticker = await fetch_custom_emoji(client, "5368324170671202286")
 print(sticker.emoji)  # the fallback glyph to use as alt
 ```
 
 `alt` is the plain emoji shown where the custom emoji cannot be
-displayed (notifications, forwards by non-premium users, and richgram's
+displayed (notifications, forwards by non-premium users, and nextgram's
 plain-text fallback), so it is required. A bot may send custom emoji if
 its owner has Telegram Premium (direct messages to private, group and
 supergroup chats) or if the bot purchased additional usernames on
 Fragment (also channels). If the bot is not eligible, Telegram rejects
-the message and richgram falls back to the alt text.
+the message and nextgram falls back to the alt text.
 
 Register emoji once and use them by name, including `:shortcode:`
 expansion in any text:
 
 ```python
-from richgram import (
+from nextgram import (
     add_html_hook, expand_emoji_shortcodes,
     register_custom_emoji, rich_emoji_named,
 )
@@ -189,14 +212,14 @@ expanded. `register_custom_emojis({...})` registers many at once,
 MarkdownV2 form, and the typed block form for `rich_send_blocks`:
 
 ```python
-from richgram import rich_emoji_markdown, rich_text_custom_emoji
+from nextgram import rich_emoji_markdown, rich_text_custom_emoji
 
 rich_emoji_markdown("5368324170671202286", "🔥")  # ![🔥](tg://emoji?id=...)
 rich_text_custom_emoji("5368324170671202286", "🔥")  # RichTextCustomEmoji
 ```
 
 The older Pyrogram form `<emoji id="...">🔥</emoji>` still works anywhere
-in richgram input: it is normalised to `<tg-emoji emoji-id="...">` before
+in nextgram input: it is normalised to `<tg-emoji emoji-id="...">` before
 sending, since the rich path sends HTML raw to Telegram.
 
 ## Multiple collapsibles
@@ -205,10 +228,10 @@ One section is `rich_details(summary, body, open=False)`. For several
 sections in one message, build them as a group:
 
 ```python
-from richgram import rich_details_group
+from nextgram import rich_details_group
 
 text = rich_details_group([
-    ("Install", "pip install richgram"),
+    ("Install", "pip install nextgram"),
     ("Usage", "See the examples below.", True),  # open by default
     {"summary": "Source", "body": "Clone the repo and read rich_ui.py"},
 ])
@@ -222,10 +245,10 @@ Sections nest, too — pass a `rich_details(...)` as a body, or build a
 tree with `rich_details_nested`:
 
 ```python
-from richgram import rich_details_nested
+from nextgram import rich_details_nested
 
 text = rich_details_nested("Guide", "Start here.", children=[
-    ("Install", "pip install richgram"),
+    ("Install", "pip install nextgram"),
     {"summary": "Advanced", "body": "", "children": [
         ("Source", "Clone the repo and read rich_ui.py"),
     ]},
@@ -240,7 +263,7 @@ Typed blocks for `rich_send_blocks` (nest one details block inside
 another the same way):
 
 ```python
-from richgram import rich_block_details, rich_block_paragraph
+from nextgram import rich_block_details, rich_block_paragraph
 
 block = rich_block_details("Guide", [
     rich_block_paragraph("Start here."),
@@ -248,7 +271,7 @@ block = rich_block_details("Guide", [
 ], open=True)
 ```
 
-When a rich message is rejected and richgram falls back to plain text,
+When a rich message is rejected and nextgram falls back to plain text,
 collapsibles become an indented outline (`▸` per section, deeper sections
 indented), so the structure survives instead of collapsing flat.
 
@@ -257,7 +280,7 @@ indented), so the structure survives instead of collapsing flat.
 A checklist renders as native checkboxes — not emoji bullets:
 
 ```python
-from richgram import rich_todo_list
+from nextgram import rich_todo_list
 
 text = rich_todo_list([
     ("Buy milk", False),
@@ -271,7 +294,7 @@ That is Rich HTML (`<li><input type="checkbox" checked>...`). The same
 list as Rich Markdown, for `rich_send(..., markdown=True)`:
 
 ```python
-from richgram import rich_todo_list_markdown
+from nextgram import rich_todo_list_markdown
 
 rich_todo_list_markdown([("Buy milk", False), ("Book tickets", True)])
 # "- [ ] Buy milk\n- [x] Book tickets"
@@ -282,8 +305,8 @@ Or as typed blocks, for `rich_send_blocks` (Kurigram) and
 field (`has_checkbox` / `is_checked`, `checkbox` / `checked`):
 
 ```python
-from richgram import rich_block_todo_list
-from richgram.telethon import telethon_block_todo_list
+from nextgram import rich_block_todo_list
+from nextgram.telethon import telethon_block_todo_list
 
 rich_block_todo_list([("Buy milk", False), ("Book tickets", True)])
 telethon_block_todo_list([("Buy milk", False), ("Book tickets", True)])
@@ -297,7 +320,7 @@ tickets`, so the state survives there too.
 ## Content blocks
 
 ```python
-from richgram import (
+from nextgram import (
     rich_heading, rich_note, rich_code, rich_pre, rich_list, rich_hr,
     rich_footer, rich_pull_quote, rich_math, rich_anchor, rich_thinking,
     rich_table, rich_kv_table, rich_details, rich_img, rich_esc,
@@ -319,9 +342,9 @@ value as inline code — use `rich_pre_rich`, whose body is HTML used
 as-is (escape user text with `rich_esc` first):
 
 ```python
-from richgram import rich_pre_rich
+from nextgram import rich_pre_rich
 
-rich_pre_rich("<b>pip</b> install <code>richgram</code>", language="bash")
+rich_pre_rich("<b>pip</b> install <code>nextgram</code>", language="bash")
 ```
 
 The language travels in the `<code class="language-...">` wrapper — the
@@ -336,14 +359,14 @@ plain strings or `(kind, text)` pairs with kind `plain`/`bold`/`italic`/
 `rich_text_code`:
 
 ```python
-from richgram import rich_block_preformatted
-from richgram.telethon import telethon_block_preformatted
+from nextgram import rich_block_preformatted
+from nextgram.telethon import telethon_block_preformatted
 
 rich_block_preformatted([
-    ("bold", "pip"), " install ", ("code", "richgram"),
+    ("bold", "pip"), " install ", ("code", "nextgram"),
 ], language="bash")
 telethon_block_preformatted([
-    ("bold", "pip"), " install ", ("code", "richgram"),
+    ("bold", "pip"), " install ", ("code", "nextgram"),
 ], language="bash")
 ```
 
@@ -357,7 +380,7 @@ These blocks are sent as typed Kurigram blocks with `rich_send_blocks`:
 
 ```python
 from pyrogram.types import InputRichBlockMap
-from richgram import rich_send_blocks
+from nextgram import rich_send_blocks
 
 await rich_send_blocks(client, chat_id, [InputRichBlockMap(...)])
 ```
@@ -365,7 +388,7 @@ await rich_send_blocks(client, chat_id, [InputRichBlockMap(...)])
 ## Sending and editing
 
 ```python
-from richgram import rich_reply, rich_edit, rich_edit_inline, rich_answer
+from nextgram import rich_reply, rich_edit, rich_edit_inline, rich_answer
 
 msg = await rich_reply(message, text)
 await rich_edit(msg, text + buttons)
@@ -401,14 +424,14 @@ await rich_send(client, chat_id, "# Title\n\n**bold** text", markdown=True)
 ## Telethon (MTProto)
 
 Telethon has no `send_rich_message`, but the same rich payload travels
-over MTProto as a native request. `richgram.telethon` builds it for you —
+over MTProto as a native request. `nextgram.telethon` builds it for you —
 the HTML builders are transport-independent, so the same text works on
 both transports:
 
 ```python
 from telethon import TelegramClient
-from richgram import rich_heading, rich_details_group
-from richgram.telethon import telethon_rich_send, telethon_rich_edit
+from nextgram import rich_heading, rich_details_group
+from nextgram.telethon import telethon_rich_send, telethon_rich_edit
 
 client = TelegramClient("session", api_id, api_hash)
 
@@ -423,10 +446,10 @@ await telethon_rich_edit(msg, text + " (updated)")
 
 How it works: the adapter sends a raw `messages.SendMessageRequest` /
 `messages.EditMessageRequest` with `rich_message` set to an
-`InputRichMessageHTML` / `InputRichMessageMarkdown` (the same mechanism
-Hermes uses). The TL schema still requires the ordinary `message` field,
-so it is filled with the same rich source text. Telethon resolves the
-peer and generates `random_id` itself when the request is invoked.
+`InputRichMessageHTML` / `InputRichMessageMarkdown`. The TL schema still
+requires the ordinary `message` field, so it is filled with the same rich
+source text. Telethon resolves the peer and generates `random_id` itself
+when the request is invoked.
 
 Like `rich_send`, a rich request Telegram rejects falls back to an
 ordinary Telethon `send_message` with the plain fallback text — and
@@ -439,7 +462,7 @@ so the caller can sleep and retry. The builders for replies and blocks mirror th
 Pyrogram side:
 
 ```python
-from richgram.telethon import (
+from nextgram.telethon import (
     telethon_rich_reply, telethon_rich_send_blocks,
     telethon_block_details, telethon_block_paragraph,
 )
@@ -458,10 +481,106 @@ directly if you want to invoke them yourself, and `TELETHON_RICH_AVAILABLE`
 reports whether the installed Telethon build has the rich-message types
 (telethon>=1.45 is known to work).
 
+## aiogram
+
+aiogram has no MTProto layer and no native rich-message method, so
+`nextgram.aiogram_rich` goes straight to the plain Bot HTTP API's
+`sendRichMessage` endpoint — the same endpoint the Pyrogram side falls
+back to over HTTP for typed blocks — and falls back further to an
+ordinary `sendMessage` with the plain-fallback text if that is rejected:
+
+```python
+from aiogram import Bot, Dispatcher
+from aiogram.filters import Command
+from nextgram import rich_heading, rich_details_group
+from nextgram.aiogram_rich import aiogram_rich_send, aiogram_rich_reply
+
+bot = Bot(token=TOKEN)
+dp = Dispatcher()
+
+text = rich_heading("Now Playing", level=3) + rich_details_group([
+    ("Track", "Song name"),
+    ("Lyrics", "La la la"),
+])
+
+@dp.message(Command("np"))
+async def now_playing(message):
+    await aiogram_rich_reply(message, text)
+```
+
+`aiogram_rich_send(bot, chat_id, html_text, ...)` takes a `Bot` instance
+directly, reading its token from `bot.token`. `aiogram_rich_reply(message,
+html_text, ...)` reads both the bot and the chat off an aiogram `Message`
+automatically (aiogram sets `message.bot` on every incoming message).
+`aiogram_rich_edit(message, html_text, ...)` edits in place; pass
+`chat_id=`/`message_id=` instead of `message` to edit one you don't have
+the `Message` object for. A `reply_markup` can be an aiogram
+`InlineKeyboardMarkup` or a plain dict — it's converted automatically.
+
+These functions return the Bot API `result` dict (with `message_id`), not
+an aiogram `Message` object — aiogram's own send methods are never called,
+since the whole point is reaching `sendRichMessage`, which aiogram doesn't
+know about.
+
+## python-telegram-bot
+
+Same situation as aiogram: no MTProto, no native rich-message method, so
+`nextgram.ptb_rich` also goes through the plain Bot HTTP API's
+`sendRichMessage`, with the same fallback to `sendMessage`:
+
+```python
+from telegram.ext import Application, CommandHandler
+from nextgram import rich_heading, rich_details_group
+from nextgram.ptb_rich import ptb_rich_reply
+
+text = rich_heading("Now Playing", level=3) + rich_details_group([
+    ("Track", "Song name"),
+    ("Lyrics", "La la la"),
+])
+
+async def now_playing(update, context):
+    await ptb_rich_reply(update, text)
+
+app = Application.builder().token(TOKEN).build()
+app.add_handler(CommandHandler("np", now_playing))
+```
+
+`ptb_rich_send(bot, chat_id, html_text, ...)` takes a `Bot` (or
+`context.bot`) directly, reading its token from `bot.token`.
+`ptb_rich_reply(message_or_update, html_text, ...)` accepts either a
+`telegram.Message` or a `telegram.Update` (its `.effective_message` is
+used), and reads the bot via `message.get_bot()`.
+`ptb_rich_edit(message, html_text, ...)` edits in place; pass
+`chat_id=`/`message_id=`/`bot=` instead of `message` to edit one you don't
+have the `Message` object for. A `reply_markup` can be a
+python-telegram-bot `InlineKeyboardMarkup` or a plain dict.
+
+Like aiogram, these functions return the Bot API `result` dict, not a
+`telegram.Message`.
+
+## How the HTTP-based `sendRichMessage` path works, and what's unconfirmed
+
+`nextgram.http_rich` is what `aiogram_rich` and `ptb_rich` both build on.
+It POSTs to `https://api.telegram.org/bot<token>/sendRichMessage` with
+`{"chat_id": ..., "rich_message": {"html": ...}}` — this is a real,
+already-used endpoint (`rich_ui._send_blocks_via_http` calls the same one
+for typed blocks), not a guess specific to this module. Sending is
+reasonably solid: a rejection is caught and the message goes out as plain
+HTML instead.
+
+Editing is the part that's genuinely unconfirmed: there is no documented
+standalone HTTP method for editing a rich message, only Pyrogram's native,
+MTProto-level `edit_message_text(..., rich_message=...)`. `edit_rich_html_via_http`
+tries the same `rich_message` field on the plain HTTP `editMessageText`
+call first — it may or may not be honoured by the server — and falls back
+to a plain-HTML edit either way, so an edit never fails outright; it may
+just silently land as a plain-text edit instead of a rich one. If you hit
+this, the plain-text edit is still correct content, just not rich.
+
 ## Ephemeral messages
 
 ```python
-from richgram import rich_reply, ephemeral_edit, ephemeral_delete
+from nextgram import rich_reply, ephemeral_edit, ephemeral_delete
 
 sent = await rich_reply(message, text, ephemeral=True)
 await ephemeral_edit(sent, new_text)
@@ -471,7 +590,7 @@ await ephemeral_delete(sent)
 ## Streaming drafts
 
 ```python
-from richgram import RichDraft, rich_heading
+from nextgram import RichDraft, rich_heading
 
 async with RichDraft(client, chat_id, can_stop=True) as draft:
     await draft.update(rich_heading("Searching..."))
@@ -480,19 +599,19 @@ async with RichDraft(client, chat_id, can_stop=True) as draft:
 
 ## Fallback and debugging
 
-If Telegram rejects a rich message, richgram sends a readable plain-text version
+If Telegram rejects a rich message, nextgram sends a readable plain-text version
 instead (buttons become links or bold text). To see why a rich message failed:
 
 ```python
 import logging
 
-logging.getLogger("richgram").setLevel(logging.DEBUG)
+logging.getLogger("nextgram").setLevel(logging.DEBUG)
 ```
 
 Transform HTML before it is sent (for example expanding emoji shortcodes):
 
 ```python
-from richgram import add_html_hook, expand_emoji_shortcodes, register_custom_emoji
+from nextgram import add_html_hook, expand_emoji_shortcodes, register_custom_emoji
 
 register_custom_emoji("fire", "5368324170671202286", "🔥")
 add_html_hook(expand_emoji_shortcodes)  # turns :fire: into a premium emoji
@@ -519,13 +638,27 @@ Plain-text helpers: `rich_to_plain(html)` and `rich_caption(html)`.
 `rich_reply`, `rich_edit`, `rich_edit_inline`, `rich_answer`,
 `ephemeral_edit`, `ephemeral_delete`, `RichDraft`
 
-Telethon transport (`from richgram.telethon import ...`):
+Telethon transport (`from nextgram.telethon import ...`):
 `TELETHON_RICH_AVAILABLE`, `telethon_input_rich`, `telethon_send_request`,
 `telethon_edit_request`, `telethon_block_paragraph`, `telethon_block_details`,
 `telethon_block_todo_list`, `telethon_block_preformatted`, `telethon_rich_send`, `telethon_rich_send_blocks`, `telethon_rich_reply`,
 `telethon_rich_edit`
 
-Widgets (`from richgram import ...`, or `from richgram.widgets import ...`):
+aiogram transport (`from nextgram.aiogram_rich import ...`):
+`aiogram_bot_token`, `aiogram_rich_send`, `aiogram_rich_reply`,
+`aiogram_rich_edit`
+
+python-telegram-bot transport (`from nextgram.ptb_rich import ...`):
+`ptb_bot_token`, `ptb_rich_send`, `ptb_rich_reply`, `ptb_rich_edit`
+
+Shared HTTP layer behind both of the above (`from nextgram.http_rich
+import ...`): `send_rich_html_via_http`, `edit_rich_html_via_http`,
+`coerce_markup_to_dict`
+
+Widgets (`from nextgram import ...`, or `from nextgram.widgets import ...`)
+— the same names work from every framework above, including Telethon,
+aiogram and python-telegram-bot, since this module never touches a
+framework's client type directly, only a bot token:
 `WIDGET_NATIVE_AVAILABLE`, `MAX_WIDGET_HTML_COMPRESSED_BYTES`,
 `MAX_WIDGET_QUERY_REQUEST_BYTES`, `MAX_WIDGET_ANSWER_DATA_BYTES`,
 `MIN_WIDGET_CACHE_TIME`, `MAX_WIDGET_CACHE_TIME`, `MAX_WALLET_MESSAGES`,
@@ -541,14 +674,14 @@ Widgets (`from richgram import ...`, or `from richgram.widgets import ...`):
 
 ## Widgets (Bot API 10.4)
 
-`richgram.widgets` adds Telegram's **widgets**: small, sandboxed HTML
+`nextgram.widgets` adds Telegram's **widgets**: small, sandboxed HTML
 blocks a bot draws inside a message (`core.telegram.org/bots/widgets`).
 This is a separate feature from the rich messages above — it does not
 need `RICH_AVAILABLE`/Kurigram's rich-message support, and nothing in
 this section changes how `rich_send` and friends behave.
 
 ```python
-from richgram import send_widget, answer_widget_query, parse_widget_query
+from nextgram import send_widget, answer_widget_query, parse_widget_query
 
 msg = await send_widget(
     client, chat_id,
@@ -560,15 +693,19 @@ msg = await send_widget(
 Every function in this module talks to the plain Bot HTTP API directly
 (`https://api.telegram.org/bot<token>/...`), the same escape hatch
 `rich_send_blocks` already uses for typed blocks — it does not depend on
-your Pyrogram/Kurigram build having native MTProto support for widgets
-(no known release does yet). Pass `token=...` explicitly, or use a client
-that already exposes `.bot_token` (Kurigram bot clients do). If a future
-Kurigram release adds `Client.send_widget` and friends, this module
-prefers them automatically (`WIDGET_NATIVE_AVAILABLE`) and only falls
-back to the raw HTTP call on failure or absence.
+any framework's client having native MTProto/HTTP support for widgets (no
+known release of any of the six frameworks does yet). Pass `token=...`
+explicitly, or pass a client that already exposes the token itself:
+`.bot_token` (Pyrogram, Pyrofork, Kurigram) or `.token` (aiogram,
+python-telegram-bot) are both read automatically. Telethon's
+`TelegramClient` doesn't keep the bot token it logged in with, so pass
+`token=...` for it. If a future release of any framework adds native
+widget support, this module prefers it automatically
+(`WIDGET_NATIVE_AVAILABLE`) and only falls back to the raw HTTP call on
+failure or absence.
 
 ```python
-from richgram import send_shared_widget, edit_message_widget_data, edit_shared_widget_data
+from nextgram import send_shared_widget, edit_message_widget_data, edit_shared_widget_data
 
 await send_shared_widget(client, chat_id, widget_id)
 await edit_message_widget_data(client, chat_id=chat_id, message_id=msg["message_id"], public_data={"score": 10})
@@ -599,13 +736,13 @@ unlike the rich-message senders above, they do not swallow failures into
 
 No known Pyrogram/Kurigram release parses these updates into Python
 objects yet, so there is no `@client.on_widget_query()`-style handler
-here. What richgram provides instead is a parser for the raw Bot-API-JSON
+here. What nextgram provides instead is a parser for the raw Bot-API-JSON
 shape of the update — useful whether that JSON comes from a webhook, a
 `getUpdates` poll you run yourself, or (once a library adds support) an
 object a future Kurigram hands you:
 
 ```python
-from richgram import extract_widget_query, answer_widget_query
+from nextgram import extract_widget_query, answer_widget_query
 
 query = extract_widget_query(update)  # update: a dict, or an object exposing .widget_query
 if query is not None:
@@ -630,7 +767,7 @@ and `data`.
 ### TON Wallet transactions
 
 ```python
-from richgram import build_wallet_transaction_answer
+from nextgram import build_wallet_transaction_answer
 
 answer = build_wallet_transaction_answer(
     valid_until=int(time.time()) + 300,
@@ -648,7 +785,7 @@ nanoton string (`validate_nanoton_amount`).
 `input_widget_message_content(html, ...)` and
 `input_shared_widget_message_content(widget_id)` build the
 `InputWidgetMessageContent` / `InputSharedWidgetMessageContent` dicts the
-guide names for `answerInlineQuery`; richgram does not wrap
+guide names for `answerInlineQuery`; nextgram does not wrap
 `answerInlineQuery` itself (it already exists on Pyrogram/Kurigram
 clients), so pass these as one of the `results` there.
 
@@ -663,7 +800,7 @@ clients), so pass these as one of the `results` there.
   parameters' exact required/optional status was not spelled out there.
   This module validates every limit the guide page does pin down and
   passes everything else through unchanged; see the docstring at the top
-  of `richgram/widgets.py` for the full list of what is, and isn't,
+  of `nextgram/widgets.py` for the full list of what is, and isn't,
   confirmed.
 - **Test server vs. production**: this module does not special-case
   Telegram's test-server token namespace (`.../bot<token>/test/...`).
@@ -702,18 +839,31 @@ connection. `tests/integrations` sends a real message when `API_ID`,
 ## Requirements
 
 - Python 3.10+
-- A **Pyrogram / Pyrofork / Kurigram** build that has Bot API 10.3 rich message
-  support (`InputRichMessage` and `Client.send_rich_message`).
-  `RICH_AVAILABLE` is `True` when your build has it.
-- For the Telethon transport: **Telethon >= 1.45** (`pip install "richgram[telethon]"`).
-  `TELETHON_RICH_AVAILABLE` is `True` when the installed Telethon build has
-  the rich-message types.
-- For widgets: **httpx** (`pip install "richgram[http]"`), used for the
-  direct Bot HTTP API calls `richgram.widgets` makes. A bot token, either
-  passed as `token=...` or read from `client.bot_token`.
+- **httpx**, always required (a plain `pip install nextgram` pulls it in) —
+  it's what `nextgram.widgets` and the aiogram/python-telegram-bot rich
+  senders use for their direct Bot HTTP API calls.
+- Only the framework(s) you actually use — none of the other five are
+  required to install or import `nextgram`:
+  - **Pyrogram / Pyrofork / Kurigram** (`pip install "nextgram[pyrogram]"`,
+    or the matching fork directly — all three install as the same
+    `pyrogram` package name). Native rich-message support
+    (`InputRichMessage`/`Client.send_rich_message`) is used automatically
+    when the installed build has it; `RICH_AVAILABLE` says whether it
+    does. No known build has it yet, so the HTML fallback is what actually
+    runs today.
+  - **Telethon >= 1.45** (`pip install "nextgram[telethon]"`).
+    `TELETHON_RICH_AVAILABLE` says whether the installed build has the
+    rich-message types.
+  - **aiogram >= 3.0** (`pip install "nextgram[aiogram]"`).
+  - **python-telegram-bot >= 21.0** (`pip install "nextgram[ptb]"`).
+- A bot token for widgets and for the aiogram/python-telegram-bot rich
+  senders — passed as `token=...`, or read automatically from a client's
+  `.bot_token` (Pyrogram/Pyrofork/Kurigram) or `.token` (aiogram,
+  python-telegram-bot) attribute. Telethon has neither, so pass
+  `token=...` explicitly when using it with `nextgram.widgets`.
 
 ## Credits
 
 - **[Kurigram](https://github.com/kurigram-org/kurigram)** for Bot API 10.3 rich message
   support in the Pyrogram ecosystem. Full credit to the Kurigram developers.
-- richgram by [BadmundaXd](https://t.me/BadmundaXd).
+- nextgram by [BadmundaXd](https://t.me/BadmundaXd).

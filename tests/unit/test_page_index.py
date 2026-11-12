@@ -1,7 +1,7 @@
 import pytest
 
-from richgram import rich_page_index, rich_to_plain
-from richgram import rich_ui
+from nextgram import rich_page_index, rich_to_plain
+from nextgram import rich_ui
 
 
 def test_full_index_line():

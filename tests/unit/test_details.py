@@ -1,6 +1,6 @@
 import pytest
 
-from richgram import (
+from nextgram import (
     rich_block_details,
     rich_block_paragraph,
     rich_details,
@@ -8,7 +8,7 @@ from richgram import (
     rich_details_nested,
     rich_to_plain,
 )
-from richgram import rich_ui
+from nextgram import rich_ui
 
 
 def test_group_joins_sibling_sections():
@@ -66,14 +66,14 @@ def test_group_rejects_bad_sections():
 
 def test_nested_builds_a_tree():
     out = rich_details_nested("Guide", "Start.", children=[
-        ("Install", "pip install richgram"),
+        ("Install", "pip install nextgram"),
         {"summary": "Advanced", "body": "", "children": [
             ("Source", "Clone the repo"),
         ]},
     ])
     assert out == (
         "<details><summary>Guide</summary>Start."
-        "<details><summary>Install</summary>pip install richgram</details>"
+        "<details><summary>Install</summary>pip install nextgram</details>"
         "<details><summary>Advanced</summary>"
         "<details><summary>Source</summary>Clone the repo</details>"
         "</details></details>"

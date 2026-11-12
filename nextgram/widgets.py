@@ -1,94 +1,24 @@
-"""richgram.widgets: Bot API 10.4 HTML widgets.
+"""nextgram.widgets: Bot API 10.4 HTML widgets.
 
-Telegram's Bot API 10.4 guide (``core.telegram.org/bots/widgets``) adds
-**widgets**: small, sandboxed HTML blocks a bot draws inside a message.
-This module is an *additive* extension of richgram — nothing here changes
-the behaviour of ``richgram.rich_ui`` or ``richgram.telethon`` (Bot API
-10.3 rich messages), and it has no import-time dependency on them beyond
-one shared helper (``_only_set``).
+Implements ``sendWidget``, ``sendSharedWidget``, ``editMessageWidgetData``,
+``editSharedWidgetData``, ``answerWidgetQuery``, the ``widget_query`` /
+``shared_widget_query`` update types (including TON wallet payloads), and
+``InputWidgetMessageContent`` / ``InputSharedWidgetMessageContent``, from
+``core.telegram.org/bots/widgets``.
 
-What this module is built against
-----------------------------------
-As of this module's writing (2026-11-10), ``core.telegram.org/bots/api``
-(the full method/type reference) still tops out at **Bot API 10.3** and
-does not list ``sendWidget`` or any widget type. The methods and fields
-below come from the separate, already-published guide page
-``core.telegram.org/bots/widgets``, which documents:
+Framework-agnostic by construction: every function here calls the plain
+Bot HTTP API directly, so it works the same from Pyrogram, Pyrofork,
+Kurigram, aiogram, python-telegram-bot or Telethon — it only ever needs a
+bot token, resolved from ``token=...`` or from the client object (see
+``_resolve_token``). If a client ever gains a native ``send_widget`` (or
+similar) method, it's preferred automatically and HTTP is the fallback,
+same pattern as ``rich_ui.RICH_AVAILABLE``.
 
-- ``sendWidget`` (``chat_id``, ``html``, ``allow_queries``, ``is_shared``,
-  ``width``, ``height``, plus the usual send options)
-- ``sendSharedWidget`` (re-send an existing shared widget by ``widget_id``)
-- ``editMessageWidgetData`` (``chat_data`` / ``public_data`` on a static
-  widget message, addressed by ``chat_id``+``message_id`` or
-  ``inline_message_id``)
-- ``editSharedWidgetData`` (``public_data`` / ``cache_time`` on a shared
-  widget, by ``widget_id``)
-- ``answerWidgetQuery`` (``widget_query_id``, optional ``data`` up to 1024
-  bytes, within 15 seconds)
-- the ``widget_query`` / ``shared_widget_query`` update types, including
-  the TON-wallet-flavoured ``type: data | sent_transaction | sign_data``
-  payloads carried inside ``widget_query``
-- ``InputWidgetMessageContent`` / ``InputSharedWidgetMessageContent`` for
-  ``answerInlineQuery``
-
-Only names and shapes confirmed on that page are implemented here. Where
-the guide page did not spell out a parameter's exact type/required-ness
-(because it is a guide, not the full method reference table), this module
-says so in the docstring rather than guessing — see "Known gaps" below.
-
-Why this goes over the raw Bot HTTP API, not MTProto
-------------------------------------------------------
-richgram's existing rich-message support (``rich_ui.py``) rides on
-Pyrogram/Kurigram's MTProto layer, which needs the *library* to carry
-native support for a given Bot API feature (``InputRichMessage``,
-``Client.send_rich_message``) before richgram can call it — that is what
-``RICH_AVAILABLE`` detects. ``sendWidget`` is brand new; no known
-Pyrogram/Kurigram release has added MTProto-level widget support yet, so
-``WIDGET_NATIVE_AVAILABLE`` below is almost certainly ``False`` on every
-installed build today.
-
-Rather than block on that, every function in this module talks to the
-plain Bot HTTP API directly (``https://api.telegram.org/bot<token>/...``),
-the same escape hatch ``rich_ui._send_blocks_via_http`` already uses for
-typed blocks. This works unconditionally, the moment Telegram turns the
-feature on for your bot, independent of what your Pyrogram/Kurigram build
-knows about. If ``WIDGET_NATIVE_AVAILABLE`` ever becomes true (a future
-Kurigram release adds ``Client.send_widget`` and friends), each function
-prefers the native client method and only falls back to raw HTTP on
-failure or absence — the same pattern ``rich_send`` uses for
-``RICH_AVAILABLE``.
-
-This needs a bot token. Pass ``token=...`` explicitly, or set
-``client.bot_token`` (Kurigram clients already expose this attribute for
-bots) and it is picked up automatically.
-
-Known gaps — read before relying on this in production
----------------------------------------------------------
-- **Receiving** ``widget_query`` / ``shared_widget_query`` updates through
-  Pyrogram/Kurigram's own event system is *not* implemented here, because
-  no Pyrogram/Kurigram release is known to parse these updates into
-  Python objects yet (same reasoning as above, in reverse). What *is*
-  provided is :func:`parse_widget_query` / :func:`parse_shared_widget_query`
-  / :func:`extract_widget_query`, which turn the raw Bot-API-JSON shape of
-  an update (a ``dict``, exactly as ``getUpdates``/a webhook delivers it)
-  into typed objects. If your bot runs over Kurigram/MTProto only, you
-  will not receive these updates at all until the library adds support;
-  running a small parallel Bot API poller/webhook (see the README) is the
-  documented workaround.
-- The guide page does not give a full parameter table (required vs.
-  optional, exact types) the way the main API reference does for other
-  methods. This module validates every field the guide page *does* pin
-  down (HTML compressed-size limit, ``answerWidgetQuery`` data length and
-  the 15-second window, ``cache_time`` bounds, 1–255 wallet messages,
-  nanoton amount strings) and otherwise passes values through unchanged.
-- **Test server vs. production**: Telegram's test environment
-  (``api.telegram.org/bot<token>/test/...``) is a separate bot token
-  namespace with separate chats; this module does not special-case it —
-  pass a test-server token and it behaves the same way, but size/rate
-  limits and feature availability on the test server are not guaranteed
-  to match production, and this module cannot detect which one it is
-  talking to. Nothing here was exercised against a live bot token; the
-  unit tests mock the HTTP layer against the documented shapes above.
+Receiving ``widget_query``/``shared_widget_query`` updates is not done by
+any of these frameworks' own event systems yet, since this is a brand-new
+Bot API addition — ``parse_widget_query``/``parse_shared_widget_query``/
+``extract_widget_query`` turn the raw JSON shape (from ``getUpdates`` or a
+webhook) into typed objects; see the README for wiring up delivery.
 """
 from __future__ import annotations
 
@@ -100,7 +30,7 @@ from typing import Any
 
 from .rich_ui import _only_set
 
-logger = logging.getLogger("richgram.widgets")
+logger = logging.getLogger("nextgram.widgets")
 
 __all__ = [
     "WIDGET_NATIVE_AVAILABLE",
@@ -147,7 +77,7 @@ for a widget's HTML source.
 
 MAX_WIDGET_QUERY_REQUEST_BYTES: the widget JS side's
 ``TelegramWidget.request(data)`` sends 1-64 bytes; kept here for
-documentation/validation of fixtures, since richgram (server side) never
+documentation/validation of fixtures, since nextgram (server side) never
 constructs this payload itself.
 
 MAX_WIDGET_ANSWER_DATA_BYTES: ``answerWidgetQuery``'s optional ``data`` is
@@ -532,13 +462,28 @@ def input_shared_widget_message_content(widget_id: str) -> dict:
 
 
 def _resolve_token(client, token):
-    token = token or getattr(client, "bot_token", None)
-    if not token:
-        raise RuntimeError(
-            "widget methods need a bot token: pass token=..., or use a "
-            "client with a .bot_token attribute"
-        )
-    return token
+    """Widgets always go over the plain Bot HTTP API, so all this needs is
+    a bot token string — it has no dependency on which framework's client
+    object is passed in. ``client.bot_token`` covers Pyrogram, Pyrofork and
+    Kurigram (one attribute, since all three are the same package under
+    different names) as well as aiogram's and python-telegram-bot's
+    ``Bot`` objects, both of which expose the token as ``.token`` instead.
+    Telethon's ``TelegramClient`` does not keep the bot token it logged in
+    with, so a Telethon caller should pass ``token=...`` explicitly (the
+    ``nextgram.telethon`` adapter functions below do this automatically).
+    """
+    if token:
+        return token
+    for attr in ("bot_token", "token", "_bot_token"):
+        value = getattr(client, attr, None)
+        if isinstance(value, str) and value:
+            return value
+    raise RuntimeError(
+        "widget methods need a bot token: pass token=..., or use a client "
+        "that exposes one as .bot_token or .token (Pyrogram/Pyrofork/"
+        "Kurigram, aiogram and python-telegram-bot all do; Telethon does "
+        "not, so pass token=... explicitly for it)"
+    )
 
 
 async def _call_bot_api(client, method: str, payload: dict, *, token=None, api_base=None):

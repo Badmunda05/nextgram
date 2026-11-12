@@ -3,7 +3,7 @@ import os
 
 import pytest
 
-from richgram import rich_button, rich_button_row, rich_heading, rich_kv_table, rich_send
+from nextgram import rich_button, rich_button_row, rich_heading, rich_kv_table, rich_send
 
 NEEDED = ("API_ID", "API_HASH", "BOT_TOKEN", "CHAT_ID")
 
@@ -16,14 +16,14 @@ def test_live_rich_message_is_delivered():
 
     async def run():
         app = Client(
-            "richgram_live_test",
+            "nextgram_live_test",
             api_id=int(os.environ["API_ID"]),
             api_hash=os.environ["API_HASH"],
             bot_token=os.environ["BOT_TOKEN"],
             in_memory=True,
         )
         async with app:
-            text = rich_heading("richgram live test", level=3) + rich_kv_table([("Status", "ok")])
+            text = rich_heading("nextgram live test", level=3) + rich_kv_table([("Status", "ok")])
             keyboard = rich_button_row(
                 rich_button("Support", url="https://t.me/BadmundaXd", style="primary"),
                 rich_button("Ping", callback_data="ping", style="success"),

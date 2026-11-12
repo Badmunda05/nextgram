@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
-from richgram import widgets as W
+from nextgram import widgets as W
 
 
 class _FakeResponse:

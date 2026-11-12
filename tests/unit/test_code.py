@@ -2,7 +2,7 @@ import pytest
 from pyrogram import types as kurigram_types
 from telethon import types as telethon_types
 
-from richgram import (
+from nextgram import (
     rich_block_preformatted,
     rich_pre,
     rich_pre_rich,
@@ -12,8 +12,8 @@ from richgram import (
     rich_text_italic,
     rich_to_plain,
 )
-from richgram import rich_ui
-from richgram.telethon import (
+from nextgram import rich_ui
+from nextgram.telethon import (
     telethon_block_preformatted,
     telethon_rich_send_blocks,
 )
@@ -21,7 +21,7 @@ from tests.helpers import FakeClient, rich_available
 
 from tests.unit.test_telethon import FakeTelethonClient
 
-SEGMENTS = [("bold", "pip"), " install ", ("code", "richgram")]
+SEGMENTS = [("bold", "pip"), " install ", ("code", "nextgram")]
 
 
 def test_rich_pre_still_escapes_everything():
@@ -31,9 +31,9 @@ def test_rich_pre_still_escapes_everything():
 
 
 def test_rich_pre_rich_keeps_nested_markup():
-    assert rich_pre_rich("<b>pip</b> install <code>richgram</code>", language="bash") == (
+    assert rich_pre_rich("<b>pip</b> install <code>nextgram</code>", language="bash") == (
         '<pre><code class="language-bash"><b>pip</b> install '
-        "<code>richgram</code></code></pre>"
+        "<code>nextgram</code></code></pre>"
     )
     assert rich_pre_rich("plain") == "<pre>plain</pre>"
 
@@ -42,9 +42,9 @@ def test_nested_pre_parses_as_entities_inside_pre():
     from telethon.extensions.html import parse as parse_html
 
     text, entities = parse_html(
-        rich_pre_rich("<b>pip</b> install <code>richgram</code>", language="bash")
+        rich_pre_rich("<b>pip</b> install <code>nextgram</code>", language="bash")
     )
-    assert text == "pip install richgram"
+    assert text == "pip install nextgram"
     kinds = {type(e).__name__ for e in entities}
     assert "MessageEntityPre" in kinds
     assert "MessageEntityBold" in kinds
@@ -68,7 +68,7 @@ def test_typed_pre_segments():
         "RichTextCode",
     ]
     assert block.text[0].text == "pip"
-    assert block.text[2].text == "richgram"
+    assert block.text[2].text == "nextgram"
 
 
 def test_typed_pre_accepts_rich_text_objects():
@@ -124,8 +124,8 @@ def test_telethon_pre_rejects_kurigram_objects_and_bad_language():
 
 
 def test_nested_pre_plain_text_stays_readable():
-    html = rich_pre_rich("<b>pip</b> install <code>richgram</code>", language="bash")
-    assert rich_to_plain(html) == "pip install richgram"
+    html = rich_pre_rich("<b>pip</b> install <code>nextgram</code>", language="bash")
+    assert rich_to_plain(html) == "pip install nextgram"
 
 
 async def test_rich_pre_rich_sends_with_nested_markup():
@@ -139,7 +139,7 @@ async def test_rich_pre_rich_sends_with_nested_markup():
 
 
 async def test_rich_pre_rich_joins_the_rich_path_with_rich_tags():
-    from richgram import rich_heading
+    from nextgram import rich_heading
 
     client = FakeClient()
     with rich_available(True):

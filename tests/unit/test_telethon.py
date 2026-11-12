@@ -4,9 +4,9 @@ import pytest
 from telethon import types as telethon_types
 from telethon.errors import FloodWaitError
 
-from richgram import rich_details, rich_emoji, rich_heading
-from richgram import telethon as telethon_adapter
-from richgram.telethon import (
+from nextgram import rich_details, rich_emoji, rich_heading
+from nextgram import telethon as telethon_adapter
+from nextgram.telethon import (
     TELETHON_RICH_AVAILABLE,
     _resolve_message,
     telethon_block_details,
