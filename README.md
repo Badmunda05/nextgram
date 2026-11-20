@@ -659,18 +659,20 @@ Widgets (`from nextgram import ...`, or `from nextgram.widgets import ...`)
 — the same names work from every framework above, including Telethon,
 aiogram and python-telegram-bot, since this module never touches a
 framework's client type directly, only a bot token:
-`WIDGET_NATIVE_AVAILABLE`, `MAX_WIDGET_HTML_COMPRESSED_BYTES`,
+`WIDGET_NATIVE_AVAILABLE`, `WIDGET_HANDLER_NATIVE_AVAILABLE`,
+`MAX_WIDGET_HTML_COMPRESSED_BYTES`,
 `MAX_WIDGET_QUERY_REQUEST_BYTES`, `MAX_WIDGET_ANSWER_DATA_BYTES`,
 `MIN_WIDGET_CACHE_TIME`, `MAX_WIDGET_CACHE_TIME`, `MAX_WALLET_MESSAGES`,
 `WidgetAPIError`, `WalletCard`, `WalletSentTransaction`,
-`WalletSignDataResult`, `WidgetQuery`, `SharedWidgetQuery`,
+`WalletSignDataResult`, `WidgetQuery`, `SharedWidgetQuery`, `Widget`,
 `widget_html_compressed_size`, `validate_widget_html`,
 `validate_nanoton_amount`, `parse_widget_query`,
-`parse_shared_widget_query`, `extract_widget_query`,
+`parse_shared_widget_query`, `extract_widget_query`, `parse_widget`,
+`extract_widget`,
 `build_wallet_transaction_answer`, `send_widget`, `send_shared_widget`,
 `edit_message_widget_data`, `edit_shared_widget_data`,
 `answer_widget_query`, `input_widget_message_content`,
-`input_shared_widget_message_content`
+`input_shared_widget_message_content`, `register_widget_query_handler`
 
 ## Widgets (Bot API 10.4)
 
@@ -726,6 +728,51 @@ await edit_shared_widget_data(client, widget_id, public_data={"score": 11}, cach
   — `data` is UTF-8 text up to 1024 bytes; pass `received_at=time.time()`
   (captured when the query arrived) to get an early `ValueError` instead
   of a late rejection if you're past Telegram's 15-second window.
+
+### Reading a widget back off a message
+
+Any message you send or receive carries its widget (if it has one) as
+`message["widget"]` in Bot API JSON — `extract_widget(message)` turns
+that into a typed `Widget` (`html`, `id` for a shared widget, `width`,
+`height`, `public_data`, `chat_data`), the same fields `send_widget`'s
+own result carries back. It also accepts a client's own native message
+object (Pyrogram/Pyrofork/Kurigram already parse this themselves as
+`message.widget`) or an already-bare widget dict:
+
+```python
+from nextgram import extract_widget
+
+widget = extract_widget(message)
+if widget:
+    print(widget.html, widget.public_data)
+```
+
+### Receiving `widget_query` / `shared_widget_query` natively
+
+Kurigram ships native dispatch for these (`handlers.WidgetQueryHandler`/
+`SharedWidgetQueryHandler`, and the `Client.on_widget_query`/
+`on_shared_widget_query` decorators) — `register_widget_query_handler`
+wires into that automatically so the same call works whether or not the
+installed pyrogram-family package has it yet:
+
+```python
+from nextgram import register_widget_query_handler
+
+async def on_query(client, widget_query):
+    await answer_widget_query(client, widget_query.id, data="pong")
+
+register_widget_query_handler(client, on_query)
+register_widget_query_handler(client, on_shared_query, shared=True)
+```
+
+On a client whose framework doesn't dispatch these yet (aiogram,
+python-telegram-bot, Telethon, or a plain HTTP bot — `core.telegram.org`
+confirms none of these had native support as of this writing besides
+Kurigram), this raises `NotImplementedError` telling you to poll
+`getUpdates`/your webhook body yourself and feed each update through
+`extract_widget_query`, rather than silently doing nothing. Check
+`WIDGET_HANDLER_NATIVE_AVAILABLE` up front if you'd rather branch on it
+yourself.
 
 All five raise `WidgetAPIError` (carrying `.error_code`/`.description`)
 on an `ok: false` Bot API response, and `ValueError` on a bad argument —

@@ -30,5 +30,5 @@ from . import widgets
 from .widgets import *
 from .widgets import __all__ as _widgets_all
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"
 __all__ = list(_rich_all) + list(_widgets_all) + ["rich_ui", "widgets", "__version__"]

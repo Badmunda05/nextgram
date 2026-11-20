@@ -474,3 +474,164 @@ async def test_answer_widget_query_without_data(http):
     await W.answer_widget_query(client(), "wq1")
     url, payload = http.calls[0]
     assert payload == {"widget_query_id": "wq1"}
+
+
+def test_parse_widget_query_carries_chat_type_for_inline():
+    wq = W.parse_widget_query(
+        {
+            "id": "1",
+            "from": {"id": 1},
+            "chat_instance": "ci",
+            "widget_id": "w1",
+            "inline_message_id": "imi",
+            "chat_type": "sender",
+        }
+    )
+    assert wq.inline_message_id == "imi"
+    assert wq.chat_type == "sender"
+    assert wq.chat is None
+
+
+def test_parse_widget_query_chat_type_absent_for_chat_message():
+    wq = W.parse_widget_query(
+        {
+            "id": "1",
+            "from": {"id": 1},
+            "chat_instance": "ci",
+            "widget_id": "w1",
+            "chat": {"id": 2},
+            "message_id": 5,
+        }
+    )
+    assert wq.chat_type is None
+
+
+def test_parse_widget_minimal():
+    widget = W.parse_widget({"html": "<div>hi</div>"})
+    assert widget.html == "<div>hi</div>"
+    assert widget.id is None
+    assert widget.width is None
+    assert widget.height is None
+
+
+def test_parse_widget_full():
+    widget = W.parse_widget(
+        {
+            "html": "<div>hi</div>",
+            "id": "shared1",
+            "width": 300,
+            "height": 200,
+            "public_data": "pub",
+            "chat_data": "priv",
+        }
+    )
+    assert widget.id == "shared1"
+    assert widget.width == 300
+    assert widget.height == 200
+    assert widget.public_data == "pub"
+    assert widget.chat_data == "priv"
+    assert widget.raw["html"] == "<div>hi</div>"
+
+
+def test_parse_widget_requires_html():
+    with pytest.raises(ValueError):
+        W.parse_widget({"id": "x"})
+
+
+def test_extract_widget_from_message_dict_with_widget_key():
+    message = {"message_id": 1, "widget": {"html": "<div>w</div>", "id": "s1"}}
+    widget = W.extract_widget(message)
+    assert widget is not None
+    assert widget.html == "<div>w</div>"
+    assert widget.id == "s1"
+
+
+def test_extract_widget_from_message_dict_without_widget():
+    message = {"message_id": 1, "text": "hello"}
+    assert W.extract_widget(message) is None
+
+
+def test_extract_widget_from_message_with_null_widget_key():
+    message = {"message_id": 1, "widget": None}
+    assert W.extract_widget(message) is None
+
+
+def test_extract_widget_from_bare_widget_dict():
+    widget = W.extract_widget({"html": "<div>bare</div>"})
+    assert widget is not None
+    assert widget.html == "<div>bare</div>"
+
+
+def test_extract_widget_from_object_with_widget_attribute():
+    native_widget = SimpleNamespace(
+        html="<div>native</div>", id="s2", width=None, height=None,
+        public_data=None, chat_data=None,
+    )
+    message = SimpleNamespace(widget=native_widget)
+    widget = W.extract_widget(message)
+    assert isinstance(widget, W.Widget)
+    assert widget.html == "<div>native</div>"
+    assert widget.id == "s2"
+
+
+def test_extract_widget_from_object_without_widget_attribute():
+    message = SimpleNamespace(text="hello")
+    assert W.extract_widget(message) is None
+
+
+def test_extract_widget_passthrough_already_parsed():
+    widget = W.Widget(html="<div>x</div>")
+    message = SimpleNamespace(widget=widget)
+    assert W.extract_widget(message) is widget
+
+
+class _FakeHandlerClass:
+    def __init__(self, callback, filters):
+        self.callback = callback
+        self.filters = filters
+
+
+def test_register_widget_query_handler_native(monkeypatch):
+    added = []
+
+    class _FakeClient:
+        def add_handler(self, handler, group):
+            added.append((handler, group))
+
+    fake_handlers = SimpleNamespace(
+        WidgetQueryHandler=_FakeHandlerClass,
+        SharedWidgetQueryHandler=_FakeHandlerClass,
+    )
+    monkeypatch.setattr(W, "WIDGET_HANDLER_NATIVE_AVAILABLE", True)
+    monkeypatch.setitem(__import__("sys").modules, "pyrogram.handlers", fake_handlers)
+    import pyrogram
+    monkeypatch.setattr(pyrogram, "handlers", fake_handlers, raising=False)
+
+    async def cb(client, query):
+        pass
+
+    client_obj = _FakeClient()
+    handler = W.register_widget_query_handler(client_obj, cb, group=3)
+    assert isinstance(handler, _FakeHandlerClass)
+    assert handler.callback is cb
+    assert added == [(handler, 3)]
+
+
+def test_register_widget_query_handler_raises_without_native_support(monkeypatch):
+    monkeypatch.setattr(W, "WIDGET_HANDLER_NATIVE_AVAILABLE", False)
+
+    async def cb(client, query):
+        pass
+
+    with pytest.raises(NotImplementedError, match="widget_query"):
+        W.register_widget_query_handler(SimpleNamespace(), cb)
+
+
+def test_register_widget_query_handler_shared_raises_message(monkeypatch):
+    monkeypatch.setattr(W, "WIDGET_HANDLER_NATIVE_AVAILABLE", False)
+
+    async def cb(client, query):
+        pass
+
+    with pytest.raises(NotImplementedError, match="shared_widget_query"):
+        W.register_widget_query_handler(SimpleNamespace(), cb, shared=True)

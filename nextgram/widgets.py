@@ -14,11 +14,20 @@ bot token, resolved from ``token=...`` or from the client object (see
 similar) method, it's preferred automatically and HTTP is the fallback,
 same pattern as ``rich_ui.RICH_AVAILABLE``.
 
-Receiving ``widget_query``/``shared_widget_query`` updates is not done by
-any of these frameworks' own event systems yet, since this is a brand-new
-Bot API addition — ``parse_widget_query``/``parse_shared_widget_query``/
+Receiving ``widget_query``/``shared_widget_query`` updates: Pyrogram,
+Pyrofork and Kurigram (one family) added native dispatch for these —
+``handlers.WidgetQueryHandler``/``SharedWidgetQueryHandler`` and the
+``Client.on_widget_query``/``on_shared_widget_query`` decorators —
+``register_widget_query_handler`` below wires into that automatically
+when it's available. For aiogram, python-telegram-bot, Telethon and raw
+HTTP bots, which don't dispatch these yet,
+``parse_widget_query``/``parse_shared_widget_query``/
 ``extract_widget_query`` turn the raw JSON shape (from ``getUpdates`` or a
-webhook) into typed objects; see the README for wiring up delivery.
+webhook) into the same typed objects, for manual polling; see the README.
+
+A message that *contains* a widget (your own sent widget, or one you
+received) carries it as ``message["widget"]`` in Bot API JSON —
+``parse_widget``/``extract_widget`` turn that into a :class:`Widget`.
 """
 from __future__ import annotations
 
@@ -34,6 +43,7 @@ logger = logging.getLogger("nextgram.widgets")
 
 __all__ = [
     "WIDGET_NATIVE_AVAILABLE",
+    "WIDGET_HANDLER_NATIVE_AVAILABLE",
     "MAX_WIDGET_HTML_COMPRESSED_BYTES",
     "MAX_WIDGET_QUERY_REQUEST_BYTES",
     "MAX_WIDGET_ANSWER_DATA_BYTES",
@@ -46,12 +56,15 @@ __all__ = [
     "WalletSignDataResult",
     "WidgetQuery",
     "SharedWidgetQuery",
+    "Widget",
     "widget_html_compressed_size",
     "validate_widget_html",
     "validate_nanoton_amount",
     "parse_widget_query",
     "parse_shared_widget_query",
     "extract_widget_query",
+    "parse_widget",
+    "extract_widget",
     "build_wallet_transaction_answer",
     "send_widget",
     "send_shared_widget",
@@ -60,6 +73,7 @@ __all__ = [
     "answer_widget_query",
     "input_widget_message_content",
     "input_shared_widget_message_content",
+    "register_widget_query_handler",
 ]
 
 try:
@@ -68,6 +82,22 @@ try:
     WIDGET_NATIVE_AVAILABLE = hasattr(_Client, "send_widget")
 except Exception:
     WIDGET_NATIVE_AVAILABLE = False
+
+try:
+    from pyrogram import handlers as _handlers
+
+    WIDGET_HANDLER_NATIVE_AVAILABLE = hasattr(_handlers, "WidgetQueryHandler") and hasattr(
+        _handlers, "SharedWidgetQueryHandler"
+    )
+except Exception:
+    WIDGET_HANDLER_NATIVE_AVAILABLE = False
+"""WIDGET_HANDLER_NATIVE_AVAILABLE: whether the installed pyrogram-family
+package (Pyrogram, Pyrofork or Kurigram - one family, same ``pyrogram``
+import name) ships native widget_query/shared_widget_query dispatch
+(``handlers.WidgetQueryHandler``/``SharedWidgetQueryHandler`` - so far
+only Kurigram does). Checked separately from WIDGET_NATIVE_AVAILABLE
+above, since a client can send widgets over plain HTTP without its
+installed package also knowing how to dispatch these updates natively."""
 
 
 _LIMITS_DOC = """Documented limits (core.telegram.org/bots/widgets):
@@ -272,7 +302,10 @@ class WidgetQuery:
     ``inline_message_id`` is present instead for a widget sent via the bot
     inline. Exactly one of the two addressing forms is set, mirroring the
     guide's "Requests from messages sent via the bot carry
-    inline_message_id instead of chat and message_id".
+    inline_message_id instead of chat and message_id". ``chat_type`` is
+    only set alongside ``inline_message_id``: "sender" for a private chat
+    with the inline query's sender, else "private"/"group"/"supergroup"/
+    "channel".
     """
 
     id: str
@@ -283,6 +316,7 @@ class WidgetQuery:
     chat: dict | None = None
     message_id: int | None = None
     inline_message_id: str | None = None
+    chat_type: str | None = None
     wallet: WalletCard | WalletSentTransaction | WalletSignDataResult | None = None
     raw: dict = field(default_factory=dict)
 
@@ -300,6 +334,84 @@ class SharedWidgetQuery:
     widget_id: str
     data: bytes | None
     raw: dict = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class Widget:
+    """A widget attached to a message (``message["widget"]`` in Bot API
+    JSON) — what you get back after :func:`send_widget`/
+    :func:`send_shared_widget`, or on any message you receive that
+    carries one.
+
+    ``id`` is the shared widget id (set only if ``is_shared`` was true
+    when it was sent — usable with :func:`send_shared_widget`).
+    ``width``/``height`` are logical pixels, omitted when automatic/
+    unfixed. ``public_data``/``chat_data`` mirror the widget's own
+    ``publicData``/``chatData`` state, same as what
+    :func:`edit_message_widget_data`/:func:`edit_shared_widget_data` set.
+    """
+
+    html: str
+    id: str | None = None
+    width: int | None = None
+    height: int | None = None
+    public_data: str | None = None
+    chat_data: str | None = None
+    raw: dict = field(default_factory=dict)
+
+
+def parse_widget(data: dict) -> Widget:
+    """Parse one raw ``widget`` dict (a message's ``widget`` field) into a
+    :class:`Widget`.
+    """
+    if not isinstance(data, dict):
+        raise ValueError("parse_widget needs a dict (the widget object)")
+    if "html" not in data:
+        raise ValueError("widget is missing required field: 'html'")
+    return Widget(
+        html=data["html"],
+        id=data.get("id"),
+        width=data.get("width"),
+        height=data.get("height"),
+        public_data=data.get("public_data"),
+        chat_data=data.get("chat_data"),
+        raw=dict(data),
+    )
+
+
+def extract_widget(message) -> Widget | None:
+    """Duck-type a message into its :class:`Widget`, or ``None``.
+
+    Accepts a raw Bot-API-JSON ``dict`` (the ``Message`` itself, or just
+    its ``widget`` value) or any object exposing a ``.widget`` attribute
+    carrying such a dict (Pyrogram/Pyrofork/Kurigram's own ``Message``
+    objects already parse this into a client-native type of the same
+    name — this is for the plain-dict/other-framework case).
+    """
+    if isinstance(message, dict):
+        if "widget" in message:
+            widget = message["widget"]
+            return parse_widget(widget) if widget else None
+        if "html" in message:
+            return parse_widget(message)
+        return None
+
+    widget = getattr(message, "widget", None)
+    if widget is None:
+        return None
+    if isinstance(widget, dict):
+        return parse_widget(widget)
+    if isinstance(widget, Widget):
+        return widget
+    return Widget(
+        html=getattr(widget, "html"),
+        id=getattr(widget, "id", None),
+        width=getattr(widget, "width", None),
+        height=getattr(widget, "height", None),
+        public_data=getattr(widget, "public_data", None),
+        chat_data=getattr(widget, "chat_data", None),
+        raw=vars(widget) if hasattr(widget, "__dict__") else {},
+    )
 
 
 def _decode_query_data(value):
@@ -349,6 +461,7 @@ def parse_widget_query(data: dict) -> WidgetQuery:
         chat=dict(chat) if chat else None,
         message_id=message_id,
         inline_message_id=inline_message_id,
+        chat_type=data.get("chat_type"),
         wallet=_parse_wallet_payload(
             data.get("type") if isinstance(data.get("type"), dict) else None
         ),
@@ -724,3 +837,45 @@ async def answer_widget_query(
     if ok:
         return result
     return await _call_bot_api(client, "answerWidgetQuery", kwargs, token=token, api_base=api_base)
+
+
+
+
+def register_widget_query_handler(client, callback, *, shared: bool = False, filters=None, group: int = 0):
+    """Register ``callback`` for incoming ``widget_query`` (or, with
+    ``shared=True``, ``shared_widget_query``) updates, the same way
+    ``Client.on_widget_query``/``on_shared_widget_query`` would.
+
+    Wires in natively on Pyrogram/Pyrofork/Kurigram clients that ship
+    ``handlers.WidgetQueryHandler``/``SharedWidgetQueryHandler`` (checked
+    via :data:`WIDGET_HANDLER_NATIVE_AVAILABLE`) by calling
+    ``client.add_handler(...)`` directly — ``callback`` then receives
+    ``(client, widget_query)`` exactly like any other Pyrogram handler,
+    with ``widget_query`` already the client's own native
+    ``types.WidgetQuery``/``types.SharedWidgetQuery``, and ``filters``
+    accepted as a native ``pyrogram.filters.Filter`` if given.
+
+    aiogram, python-telegram-bot, Telethon and raw HTTP bots don't
+    dispatch these updates yet (this is a brand-new Bot API addition), so
+    for those this raises :class:`NotImplementedError` with a pointer to
+    polling manually: call ``getUpdates``/handle the webhook body yourself
+    and feed each update through :func:`extract_widget_query`.
+
+    Returns the created native handler object (useful for
+    ``client.remove_handler(...)`` later), or raises.
+    """
+    if WIDGET_HANDLER_NATIVE_AVAILABLE and hasattr(client, "add_handler"):
+        from pyrogram import handlers as _handlers
+
+        handler_cls = _handlers.SharedWidgetQueryHandler if shared else _handlers.WidgetQueryHandler
+        handler = handler_cls(callback, filters)
+        client.add_handler(handler, group)
+        return handler
+    kind = "shared_widget_query" if shared else "widget_query"
+    raise NotImplementedError(
+        f"this client has no native {kind} dispatch yet (only Pyrogram/"
+        "Pyrofork/Kurigram ship WidgetQueryHandler/SharedWidgetQueryHandler "
+        "so far) - poll getUpdates (or your webhook handler) yourself and "
+        f"pass each update through nextgram.widgets.extract_widget_query() "
+        "to get the same typed object"
+    )
