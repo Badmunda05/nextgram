@@ -4,16 +4,7 @@ import html as _html
 import logging
 import re
 
-"""Pyrogram/Pyrofork/Kurigram are three distributions of the same package
-name (``pyrogram``), so every import below resolves to whichever one is
-installed — no separate code path is needed per fork. All three imports
-are optional: this module (and so ``nextgram`` as a whole) imports cleanly
-with none of them installed, for callers who only use ``nextgram.telethon``,
-``nextgram.aiogram_rich``, ``nextgram.ptb_rich`` or ``nextgram.widgets``.
-The ``_Pyrogram*`` senders below simply aren't usable without the real
-package — calling one then raises the normal ``AttributeError``/``TypeError``
-you'd expect from a ``None`` placeholder, rather than failing at import.
-"""
+"""Pyrogram/Pyrofork/Kurigram are three distributions of the same package name (``pyrogram``), so every import below resolves to whichever one is installed —…"""
 try:
     from pyrogram.enums import ParseMode
 except ImportError:
@@ -23,10 +14,7 @@ try:
     from pyrogram.errors import MessageNotModified
 except ImportError:
     class MessageNotModified(Exception):
-        """Stand-in used only so ``except MessageNotModified:`` stays
-        valid when pyrogram isn't installed; it can never actually be
-        raised in that case, since there is no pyrogram client to raise
-        it."""
+        """Stand-in used only so ``except MessageNotModified:`` stays valid when pyrogram isn't installed; it can never actually be raised in that case, since there is…"""
 
 try:
     from pyrogram.types import ReplyParameters
@@ -270,22 +258,7 @@ def rich_pre(value, language: str = None) -> str:
 
 
 def rich_pre_rich(body: str, language: str = None) -> str:
-    """A preformatted block with nested inline formatting inside it.
-
-    Unlike ``rich_pre``, which escapes everything, ``body`` is used as-is,
-    so inline markup nests inside the code block — bold a keyword, mark a
-    value as inline code::
-
-        rich_pre_rich("<b>pip</b> install <code>nextgram</code>", language="bash")
-
-    Escape user-supplied text with ``rich_esc(...)`` before composing the
-    body; data is never markup. The language travels in the
-    ``<code class="language-...">`` wrapper, the form Telegram's parser
-    reads (a ``language="..."`` attribute on ``<pre>`` loses it). Nested
-    formatting parses as real entities inside the pre block — verified
-    against Telethon's HTML parser — but the final render is the client's,
-    so check it live.
-    """
+    """A preformatted block with nested inline formatting inside it."""
     if language:
         return f'<pre><code class="language-{_attr(language)}">{body}</code></pre>'
     return f"<pre>{body}</pre>"
@@ -295,13 +268,7 @@ _PRE_SEGMENT_KINDS = ("plain", "bold", "italic", "code")
 
 
 def _pre_segments(text):
-    """Normalize preformatted content to plain segments.
-
-    Returns the text unchanged for a plain string, else a list of
-    ``(kind, text)`` pairs with kind ``plain``/``bold``/``italic``/``code``.
-    A segment is a plain string, a ``(kind, text)`` pair, or a Kurigram
-    ``RichText`` object (kept as-is for the Kurigram path only).
-    """
+    """Normalize preformatted content to plain segments."""
     if isinstance(text, str):
         return text
     if isinstance(text, (list, tuple)) and text and isinstance(text[0], str) and text[0] in _PRE_SEGMENT_KINDS and len(text) == 2:
@@ -372,21 +339,7 @@ def _validate_pre_language(language):
 
 
 def rich_block_preformatted(text, language: str = None):
-    """A typed preformatted block with nested inline formatting.
-
-    ``text`` is a plain string, or a list of segments — plain strings,
-    ``(kind, text)`` pairs with kind ``plain``/``bold``/``italic``/``code``,
-    or ``RichText`` objects from ``rich_text_bold`` / ``rich_text_italic`` /
-    ``rich_text_code``::
-
-        rich_block_preformatted([
-            ("bold", "pip"), " install ", ("code", "nextgram"),
-        ], language="bash")
-
-    A fenced Markdown block is literal, so this nesting exists only in the
-    HTML and typed-block forms. ``language`` is any string; the client
-    highlights the languages it knows.
-    """
+    """A typed preformatted block with nested inline formatting."""
     if InputRichBlockPreformatted is None:
         raise RuntimeError(
             "rich_block_preformatted needs a Kurigram build with "
@@ -419,12 +372,7 @@ def rich_list(items, ordered: bool = False) -> str:
 
 
 def _todo_items(items) -> list[tuple[str, bool]]:
-    """Normalize todo items to ``(text, done)`` pairs.
-
-    Each item is a plain string (unchecked), a ``(text, done)`` pair, or a
-    ``{"text": ..., "done": ...}`` dict. The done flag must be a real bool,
-    so a stray truthy value can never silently tick a box.
-    """
+    """Normalize todo items to ``(text, done)`` pairs."""
     normalized = []
     for item in items or ():
         if isinstance(item, str):
@@ -447,16 +395,7 @@ def _todo_items(items) -> list[tuple[str, bool]]:
 
 
 def rich_todo_list(items) -> str:
-    """A checklist as Rich HTML.
-
-    Renders as native checkboxes on Telegram (Bot API 10.1+): each item is
-    ``<li><input type="checkbox" checked>`` when done, without ``checked``
-    when open. Item text is used as-is, like ``rich_list`` — pass
-    ``rich_esc(...)`` or inline markup yourself when the text is user input.
-
-    The boxes show the state you send; they are not tappable toggles. To
-    flip an item, re-send or edit the message with the new state.
-    """
+    """A checklist as Rich HTML."""
     body = "".join(
         f"<li><input type=\"checkbox\"{' checked' if done else ''}>{text}</li>"
         for text, done in _todo_items(items)
@@ -465,11 +404,7 @@ def rich_todo_list(items) -> str:
 
 
 def rich_todo_list_markdown(items) -> str:
-    """The same checklist as Rich Markdown (``- [ ]`` / ``- [x]`` lines).
-
-    Send it with ``rich_send(client, chat, text, markdown=True)``. Item text
-    must be a single line — a newline would split the item into two lines.
-    """
+    """The same checklist as Rich Markdown (``- [ ]`` / ``- [x]`` lines)."""
     lines = []
     for text, done in _todo_items(items):
         if "\n" in text or "\r" in text:
@@ -487,14 +422,7 @@ def rich_footer(text: str) -> str:
 
 
 def rich_page_index(page: int, pages: int, total: int = None, label: str = None) -> str:
-    """A page indexation line for the bottom of a paginated message.
-
-    Renders as an italic footer, the universal style for page indexation:
-    ``<footer><i>Page 2 of 5 • total 42</i></footer>``, or ``Page 2 of 5``
-    when the total is unknown. ``label`` names the list being paged
-    (``Settings · Page 2 of 5``). Page counts are 1-based; ``pages`` must
-    cover ``page`` and ``total`` must not be negative.
-    """
+    """A page indexation line for the bottom of a paginated message."""
     if (
         isinstance(page, bool)
         or isinstance(pages, bool)
@@ -570,28 +498,7 @@ def _validate_emoji_alt(alt) -> str:
 
 
 def rich_emoji(document_id, alt: str) -> str:
-    """A premium custom emoji in Bot API HTML form.
-
-    Example: ``rich_emoji("5368324170671202286", "🔥")`` ->
-    ``<tg-emoji emoji-id="5368324170671202286">🔥</tg-emoji>``.
-
-    ``document_id`` is the custom-emoji sticker's document id (not a
-    file_id, pack name, or t.me/addemoji link). Read one off a message
-    entity of type custom_emoji, a sticker set (``Sticker.custom_emoji_id``),
-    or :func:`fetch_custom_emoji`. A fabricated id fails at send time, so
-    the shape is validated here (digits only, fits in a signed 64-bit int).
-
-    ``alt`` is the plain emoji shown where the custom emoji cannot be
-    displayed (notifications, forwards by non-premium users, and nextgram's
-    plain-text fallback). It is required: Telegram requires a valid emoji
-    as the content of the tag.
-
-    Eligibility (Bot API 9.4+): a bot may send custom emoji if its owner
-    has Telegram Premium (direct messages to private/group/supergroup
-    chats) or if the bot purchased additional usernames on Fragment (also
-    channels). nextgram cannot check eligibility; an ineligible send is
-    rejected by Telegram and :func:`rich_send` falls back to ``alt``.
-    """
+    """A premium custom emoji in Bot API HTML form."""
     emoji_id = _validate_custom_emoji_id(document_id)
     alt_text = _validate_emoji_alt(alt)
     return f'<tg-emoji emoji-id="{emoji_id}">{rich_esc(alt_text)}</tg-emoji>'
@@ -605,11 +512,7 @@ def rich_emoji_markdown(document_id, alt: str) -> str:
 
 
 def rich_text_custom_emoji(document_id, alt: str):
-    """A typed ``RichTextCustomEmoji`` for use in ``rich_send_blocks``.
-
-    Example: ``InputRichBlockParagraph(text=[rich_text_custom_emoji(id, "🔥")])``.
-    Requires a Kurigram build with ``RichTextCustomEmoji``.
-    """
+    """A typed ``RichTextCustomEmoji`` for use in ``rich_send_blocks``."""
     if RichTextCustomEmoji is None:
         raise RuntimeError(
             "rich_text_custom_emoji needs a Kurigram build with RichTextCustomEmoji"
@@ -621,13 +524,7 @@ def rich_text_custom_emoji(document_id, alt: str):
 
 
 async def fetch_custom_emoji(client, document_id):
-    """Verify a custom emoji id and get its sticker (or ``None``).
-
-    Calls ``client.get_custom_emoji_stickers([id])`` (at most 200 ids per
-    call; this helper checks one). The returned sticker carries
-    ``.custom_emoji_id`` and ``.emoji`` — the fallback glyph to pass as
-    ``alt`` to :func:`rich_emoji`.
-    """
+    """Verify a custom emoji id and get its sticker (or ``None``)."""
     emoji_id = _validate_custom_emoji_id(document_id)
     getter = getattr(client, "get_custom_emoji_stickers", None)
     if getter is None:
@@ -669,11 +566,7 @@ def register_custom_emoji(name, document_id, alt: str) -> str:
 
 
 def register_custom_emojis(mapping) -> None:
-    """Register many custom emojis at once.
-
-    ``mapping`` is ``{name: (document_id, alt)}`` or
-    ``{name: {"id": document_id, "alt": alt}}``.
-    """
+    """Register many custom emojis at once."""
     for name, value in dict(mapping).items():
         if isinstance(value, dict):
             document_id, alt = value.get("id"), value.get("alt")
@@ -704,17 +597,7 @@ def rich_emoji_named(name) -> str:
 
 
 def expand_emoji_shortcodes(html_text: str) -> str:
-    """Replace registered ``:name:`` shortcodes with custom-emoji markup.
-
-    Register names first, e.g. ``register_custom_emoji("fire", id, "🔥")``,
-    then use as an html hook so ``rich_send`` expands them on the way out::
-
-        add_html_hook(expand_emoji_shortcodes)
-
-    Only registered names expand; unknown shortcodes (and times like
-    12:30) are left untouched. Shortcodes inside ``<pre>``/``<code>`` are
-    never expanded, so code samples stay verbatim.
-    """
+    """Replace registered ``:name:`` shortcodes with custom-emoji markup."""
     if not html_text or not _custom_emojis:
         return html_text or ""
 
@@ -827,13 +710,7 @@ def _validate_details_summary(summary) -> str:
 
 
 def rich_details(summary: str, body: str, open: bool = False) -> str:
-    """One collapsible section.
-
-    Nesting is allowed: pass another ``rich_details(...)`` (or any HTML
-    containing ``<details>``) as ``body``. Telegram allows up to 16 levels
-    of nested formatting and blocks, so deeper nesting raises ValueError
-    here instead of failing at send time.
-    """
+    """One collapsible section."""
     if _max_details_depth(body) >= _MAX_DETAILS_DEPTH:
         raise ValueError(
             "nested details exceed Telegram's 16-level limit for rich messages"
@@ -875,14 +752,7 @@ def _details_section(section):
 
 
 def rich_details_group(sections, *, open_first: bool = False, open_all: bool = False) -> str:
-    """Several sibling collapsible sections in one message.
-
-    ``sections`` is an iterable of ``(summary, body)``, ``(summary, body, open)``
-    or ``{"summary": ..., "body": ..., "open": ...}``. A per-section ``open``
-    wins over ``open_first``/``open_all``; ``open_first`` opens only the
-    first section, ``open_all`` opens every section. Sections open and close
-    independently: Telegram has no accordion mode. Returns "" for no sections.
-    """
+    """Several sibling collapsible sections in one message."""
     if open_first and open_all:
         raise ValueError("open_first and open_all cannot both be True")
     parts = []
@@ -914,21 +784,7 @@ def _details_tree(node, depth: int) -> str:
 
 
 def rich_details_nested(summary: str, body: str = "", children=(), open: bool = False) -> str:
-    """One collapsible section containing nested collapsible sections.
-
-    ``children`` are sections in the same shapes ``rich_details_group``
-    accepts, plus dicts with a ``children`` key for deeper nesting and
-    prebuilt ``rich_details(...)`` strings. Example::
-
-        rich_details_nested("Guide", "Start here.", children=[
-            ("Install", "pip install nextgram"),
-            {"summary": "Advanced", "body": "", "children": [
-                ("Source", "Clone the repo and read rich_ui.py"),
-            ]},
-        ])
-
-    Nesting deeper than Telegram's 16 levels raises ValueError.
-    """
+    """One collapsible section containing nested collapsible sections."""
     return _details_tree(
         {"summary": summary, "body": body, "open": open, "children": children},
         depth=1,
@@ -945,11 +801,7 @@ def rich_block_paragraph(text: str):
 
 
 def rich_block_details(summary: str, blocks, open: bool = False):
-    """A typed ``InputRichBlockDetails`` for use in ``rich_send_blocks``.
-
-    ``blocks`` is a list of ``InputRichBlock`` objects; nest another
-    ``rich_block_details(...)`` inside it for nested collapsibles.
-    """
+    """A typed ``InputRichBlockDetails`` for use in ``rich_send_blocks``."""
     if InputRichBlockDetails is None:
         raise RuntimeError(
             "rich_block_details needs a Kurigram build with InputRichBlockDetails"
@@ -962,12 +814,7 @@ def rich_block_details(summary: str, blocks, open: bool = False):
 
 
 def rich_block_todo_list(items):
-    """A typed checklist block for use in ``rich_send_blocks``.
-
-    Builds an ``InputRichBlockList`` whose items carry ``has_checkbox`` and
-    ``is_checked`` — the same native checkboxes the HTML and Markdown forms
-    render, as real block objects.
-    """
+    """A typed checklist block for use in ``rich_send_blocks``."""
     if InputRichBlockList is None or InputRichBlockListItem is None:
         raise RuntimeError(
             "rich_block_todo_list needs a Kurigram build with "
@@ -993,11 +840,7 @@ _TODO_LI_RE = re.compile(r"<li\b[^>]*>\s*(<input\b[^>]*>)", re.I)
 
 
 def _todo_li_to_plain(match) -> str:
-    """Render a checklist item as ``[x] `` / ``[ ] ``, or leave it alone.
-
-    Only checkbox inputs are converted; any other input inside an <li> is
-    returned untouched so the plain-list handling still sees the <li>.
-    """
+    """Render a checklist item as ``[x] `` / ``[ ] ``, or leave it alone."""
     tag = match.group(1)
     if "checkbox" not in tag.lower():
         return match.group(0)

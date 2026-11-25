@@ -1,14 +1,4 @@
-"""nextgram.ptb_rich: rich messages and widgets for python-telegram-bot bots.
-
-python-telegram-bot is optional — importing ``nextgram`` never requires
-it, and this module has no import-time dependency on the ``telegram``
-package itself (it only reads a few attributes off whatever ``Bot``/
-``Message`` objects are passed in). Rich-message sending goes over the
-plain Bot HTTP API via ``nextgram.http_rich`` (see that module's docstring
-for exactly what is confirmed vs. speculative); widgets go over the same
-HTTP API via ``nextgram.widgets``, which already works with any client
-exposing a ``.token`` attribute — python-telegram-bot's ``Bot`` does.
-"""
+"""nextgram.ptb_rich: rich messages and widgets for python-telegram-bot bots."""
 from __future__ import annotations
 
 import logging
@@ -47,14 +37,7 @@ async def ptb_rich_send(
     disable_notification=None,
     protect_content=None,
 ):
-    """Send rich HTML/Markdown to ``chat_id`` with a python-telegram-bot
-    ``Bot`` (or ``Bot``-like object — ``context.bot`` works the same way).
-
-    ``reply_markup`` accepts a python-telegram-bot ``InlineKeyboardMarkup``
-    (or any object with ``.to_dict``) as well as a plain dict. Returns the
-    Bot API ``result`` dict (not a ``telegram.Message``) — use
-    ``result["message_id"]`` for the sent message's id.
-    """
+    """Send rich HTML/Markdown to ``chat_id`` with a python-telegram-bot ``Bot`` (or ``Bot``-like object — ``context.bot`` works the same way)."""
     token = ptb_bot_token(bot)
     reply_parameters = (
         {"message_id": reply_to_message_id} if reply_to_message_id else None
@@ -73,14 +56,7 @@ async def ptb_rich_send(
 
 
 async def ptb_rich_reply(message, html_text: str, *, bot=None, **kwargs):
-    """Reply to a python-telegram-bot ``Message``/``Update`` with rich
-    HTML/Markdown.
-
-    Accepts either a ``telegram.Message`` or a ``telegram.Update`` (its
-    ``.effective_message`` is used). ``bot`` defaults to
-    ``message.get_bot()`` when the object exposes that (python-telegram-bot
-    messages do).
-    """
+    """Reply to a python-telegram-bot ``Message``/``Update`` with rich HTML/Markdown."""
     target = getattr(message, "effective_message", None) or message
     app = bot
     if app is None:
@@ -107,13 +83,7 @@ async def ptb_rich_edit(
     markdown: bool = False,
     reply_markup=None,
 ):
-    """Edit a message to rich HTML/Markdown with a python-telegram-bot
-    ``Bot``.
-
-    ``message`` is a ``telegram.Message`` (``.chat_id``/``.message_id``
-    read automatically) or ``None``, in which case ``chat_id`` and
-    ``message_id`` are required.
-    """
+    """Edit a message to rich HTML/Markdown with a python-telegram-bot ``Bot``."""
     if message is not None:
         if bot is None:
             get_bot = getattr(message, "get_bot", None)

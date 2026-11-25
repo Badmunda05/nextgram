@@ -1,34 +1,4 @@
-"""nextgram.widgets: Bot API 10.4 HTML widgets.
-
-Implements ``sendWidget``, ``sendSharedWidget``, ``editMessageWidgetData``,
-``editSharedWidgetData``, ``answerWidgetQuery``, the ``widget_query`` /
-``shared_widget_query`` update types (including TON wallet payloads), and
-``InputWidgetMessageContent`` / ``InputSharedWidgetMessageContent``, from
-``core.telegram.org/bots/widgets``.
-
-Framework-agnostic by construction: every function here calls the plain
-Bot HTTP API directly, so it works the same from Pyrogram, Pyrofork,
-Kurigram, aiogram, python-telegram-bot or Telethon — it only ever needs a
-bot token, resolved from ``token=...`` or from the client object (see
-``_resolve_token``). If a client ever gains a native ``send_widget`` (or
-similar) method, it's preferred automatically and HTTP is the fallback,
-same pattern as ``rich_ui.RICH_AVAILABLE``.
-
-Receiving ``widget_query``/``shared_widget_query`` updates: Pyrogram,
-Pyrofork and Kurigram (one family) added native dispatch for these —
-``handlers.WidgetQueryHandler``/``SharedWidgetQueryHandler`` and the
-``Client.on_widget_query``/``on_shared_widget_query`` decorators —
-``register_widget_query_handler`` below wires into that automatically
-when it's available. For aiogram, python-telegram-bot, Telethon and raw
-HTTP bots, which don't dispatch these yet,
-``parse_widget_query``/``parse_shared_widget_query``/
-``extract_widget_query`` turn the raw JSON shape (from ``getUpdates`` or a
-webhook) into the same typed objects, for manual polling; see the README.
-
-A message that *contains* a widget (your own sent widget, or one you
-received) carries it as ``message["widget"]`` in Bot API JSON —
-``parse_widget``/``extract_widget`` turn that into a :class:`Widget`.
-"""
+"""nextgram.widgets: Bot API 10.4 HTML widgets."""
 from __future__ import annotations
 
 import logging
@@ -91,13 +61,7 @@ try:
     )
 except Exception:
     WIDGET_HANDLER_NATIVE_AVAILABLE = False
-"""WIDGET_HANDLER_NATIVE_AVAILABLE: whether the installed pyrogram-family
-package (Pyrogram, Pyrofork or Kurigram - one family, same ``pyrogram``
-import name) ships native widget_query/shared_widget_query dispatch
-(``handlers.WidgetQueryHandler``/``SharedWidgetQueryHandler`` - so far
-only Kurigram does). Checked separately from WIDGET_NATIVE_AVAILABLE
-above, since a client can send widgets over plain HTTP without its
-installed package also knowing how to dispatch these updates natively."""
+"""WIDGET_HANDLER_NATIVE_AVAILABLE: whether the installed pyrogram-family package (Pyrogram, Pyrofork or Kurigram - one family, same ``pyrogram`` import name)…"""
 
 
 _LIMITS_DOC = """Documented limits (core.telegram.org/bots/widgets):
@@ -134,11 +98,7 @@ _DEFAULT_BOT_API_BASE = "https://api.telegram.org"
 
 
 class WidgetAPIError(RuntimeError):
-    """Raised when the Bot HTTP API rejects a widget call (``ok: false``).
-
-    Carries the parsed error body so callers can branch on
-    ``error_code``/``description`` instead of parsing a message string.
-    """
+    """Raised when the Bot HTTP API rejects a widget call (``ok: false``)."""
 
     def __init__(self, method: str, status_code: int, payload: dict):
         self.method = method
@@ -156,11 +116,7 @@ class WidgetAPIError(RuntimeError):
 
 
 def widget_html_compressed_size(html_text: str) -> int:
-    """The size the widgets guide checks the 4096-byte limit against.
-
-    "Count compressed HTML size with zlib level 9" — ``zlib.compress``
-    defaults to level 6, so the level is passed explicitly.
-    """
+    """The size the widgets guide checks the 4096-byte limit against."""
     return len(zlib.compress(str(html_text).encode("utf-8"), level=9))
 
 
@@ -177,15 +133,7 @@ def validate_widget_html(html_text: str) -> str:
 
 
 def _validate_answer_data(data) -> str | None:
-    """Validate and normalize ``answerWidgetQuery``'s ``data`` to ``str``.
-
-    Bot API JSON has no byte-string type, so this (like ``callback_data``
-    elsewhere in the Bot API) is necessarily UTF-8 text on the wire. A
-    ``str`` is accepted as-is; ``bytes``/``bytearray`` is accepted only if
-    it *is* valid UTF-8 — anything else is rejected with a clear error
-    instead of being silently mangled into something Telegram would
-    receive differently than intended.
-    """
+    """Validate and normalize ``answerWidgetQuery``'s ``data`` to ``str``."""
     if data is None:
         return None
     if isinstance(data, (bytes, bytearray)):
@@ -222,13 +170,7 @@ def _validate_cache_time(cache_time) -> int | None:
 
 
 def validate_nanoton_amount(amount) -> str:
-    """Validate a wallet message's ``amount``: a decimal nanoton string.
-
-    The guide gives the shape as a decimal string ("amount is in nanotons
-    as a decimal string"), so an int is accepted for convenience and
-    rendered as one, but a non-digit string is rejected rather than sent
-    on to Telegram to fail opaquely.
-    """
+    """Validate a wallet message's ``amount``: a decimal nanoton string."""
     if isinstance(amount, bool):
         raise ValueError("a wallet message amount must be a non-negative integer or digit string")
     if isinstance(amount, int):
@@ -295,18 +237,7 @@ def _parse_wallet_payload(type_data: dict | None):
 
 @dataclass(frozen=True)
 class WidgetQuery:
-    """A ``widget_query`` update: a request from a widget's own (non-shared)
-    message, parsed from the raw Bot-API-JSON ``dict`` Telegram sends.
-
-    ``chat``/``message_id`` are present for a widget on a normal message;
-    ``inline_message_id`` is present instead for a widget sent via the bot
-    inline. Exactly one of the two addressing forms is set, mirroring the
-    guide's "Requests from messages sent via the bot carry
-    inline_message_id instead of chat and message_id". ``chat_type`` is
-    only set alongside ``inline_message_id``: "sender" for a private chat
-    with the inline query's sender, else "private"/"group"/"supergroup"/
-    "channel".
-    """
+    """A ``widget_query`` update: a request from a widget's own (non-shared) message, parsed from the raw Bot-API-JSON ``dict`` Telegram sends."""
 
     id: str
     from_user: dict
@@ -323,11 +254,7 @@ class WidgetQuery:
 
 @dataclass(frozen=True)
 class SharedWidgetQuery:
-    """A ``shared_widget_query`` update: a request from a forward of a
-    shared widget. Carries only ``id``, ``from``, ``data`` and
-    ``widget_id`` per the guide — no ``chat``/``message_id`` to reply
-    into, since the forward may be anywhere.
-    """
+    """A ``shared_widget_query`` update: a request from a forward of a shared widget."""
 
     id: str
     from_user: dict
@@ -338,18 +265,7 @@ class SharedWidgetQuery:
 
 @dataclass(frozen=True)
 class Widget:
-    """A widget attached to a message (``message["widget"]`` in Bot API
-    JSON) — what you get back after :func:`send_widget`/
-    :func:`send_shared_widget`, or on any message you receive that
-    carries one.
-
-    ``id`` is the shared widget id (set only if ``is_shared`` was true
-    when it was sent — usable with :func:`send_shared_widget`).
-    ``width``/``height`` are logical pixels, omitted when automatic/
-    unfixed. ``public_data``/``chat_data`` mirror the widget's own
-    ``publicData``/``chatData`` state, same as what
-    :func:`edit_message_widget_data`/:func:`edit_shared_widget_data` set.
-    """
+    """A widget attached to a message (``message["widget"]`` in Bot API JSON) — what you get back after :func:`send_widget`/ :func:`send_shared_widget`, or on any…"""
 
     html: str
     id: str | None = None
@@ -361,9 +277,7 @@ class Widget:
 
 
 def parse_widget(data: dict) -> Widget:
-    """Parse one raw ``widget`` dict (a message's ``widget`` field) into a
-    :class:`Widget`.
-    """
+    """Parse one raw ``widget`` dict (a message's ``widget`` field) into a :class:`Widget`."""
     if not isinstance(data, dict):
         raise ValueError("parse_widget needs a dict (the widget object)")
     if "html" not in data:
@@ -380,14 +294,7 @@ def parse_widget(data: dict) -> Widget:
 
 
 def extract_widget(message) -> Widget | None:
-    """Duck-type a message into its :class:`Widget`, or ``None``.
-
-    Accepts a raw Bot-API-JSON ``dict`` (the ``Message`` itself, or just
-    its ``widget`` value) or any object exposing a ``.widget`` attribute
-    carrying such a dict (Pyrogram/Pyrofork/Kurigram's own ``Message``
-    objects already parse this into a client-native type of the same
-    name — this is for the plain-dict/other-framework case).
-    """
+    """Duck-type a message into its :class:`Widget`, or ``None``."""
     if isinstance(message, dict):
         if "widget" in message:
             widget = message["widget"]
@@ -415,13 +322,7 @@ def extract_widget(message) -> Widget | None:
 
 
 def _decode_query_data(value):
-    """Normalize an incoming query's ``data`` field to ``bytes``.
-
-    Bot API JSON cannot carry raw bytes, so a ``str`` value (the only
-    shape Telegram ever sends here) is handed back encoded as UTF-8 bytes
-    — the most useful default for a caller that wants to inspect it as
-    either text or bytes.
-    """
+    """Normalize an incoming query's ``data`` field to ``bytes``."""
     if value is None:
         return None
     if isinstance(value, (bytes, bytearray)):
@@ -432,12 +333,7 @@ def _decode_query_data(value):
 
 
 def parse_widget_query(data: dict) -> WidgetQuery:
-    """Parse one raw ``widget_query`` update dict into a :class:`WidgetQuery`.
-
-    ``data`` is the ``dict`` exactly as it appears under
-    ``update["widget_query"]`` in Bot API JSON (from ``getUpdates`` or a
-    webhook body) — not an already-wrapped ``Update``.
-    """
+    """Parse one raw ``widget_query`` update dict into a :class:`WidgetQuery`."""
     if not isinstance(data, dict):
         raise ValueError("parse_widget_query needs a dict (the widget_query object)")
     required = ("id", "from", "chat_instance", "widget_id")
@@ -487,19 +383,7 @@ def parse_shared_widget_query(data: dict) -> SharedWidgetQuery:
 
 
 def extract_widget_query(update):
-    """Duck-type an incoming update into a parsed widget query, or ``None``.
-
-    Accepts, in order:
-
-    - a raw Bot-API-JSON ``dict`` (the whole ``Update`` object, or just its
-      ``widget_query``/``shared_widget_query`` value)
-    - any object exposing ``.widget_query`` / ``.shared_widget_query``
-      attributes carrying such a dict (forward-compatible with a future
-      Pyrogram/Kurigram ``Update`` that adds these attributes)
-
-    Returns a :class:`WidgetQuery`, a :class:`SharedWidgetQuery`, or
-    ``None`` when the update carries neither.
-    """
+    """Duck-type an incoming update into a parsed widget query, or ``None``."""
     if isinstance(update, dict):
         if "widget_query" in update:
             return parse_widget_query(update["widget_query"])
@@ -521,14 +405,7 @@ def extract_widget_query(update):
 
 
 def build_wallet_transaction_answer(valid_until, messages) -> dict:
-    """Build the bot's TON Connect-shaped transaction answer.
-
-    ``messages`` is an iterable of ``{"address": ..., "amount": ...,
-    "payload": ..., "stateInit": ...}`` dicts (``payload``/``stateInit``
-    optional); 1-255 of them, per the guide. ``amount`` is validated and
-    normalised to a decimal nanoton string with
-    :func:`validate_nanoton_amount`.
-    """
+    """Build the bot's TON Connect-shaped transaction answer."""
     messages = list(messages or ())
     if not (1 <= len(messages) <= MAX_WALLET_MESSAGES):
         raise ValueError(
@@ -575,16 +452,7 @@ def input_shared_widget_message_content(widget_id: str) -> dict:
 
 
 def _resolve_token(client, token):
-    """Widgets always go over the plain Bot HTTP API, so all this needs is
-    a bot token string — it has no dependency on which framework's client
-    object is passed in. ``client.bot_token`` covers Pyrogram, Pyrofork and
-    Kurigram (one attribute, since all three are the same package under
-    different names) as well as aiogram's and python-telegram-bot's
-    ``Bot`` objects, both of which expose the token as ``.token`` instead.
-    Telethon's ``TelegramClient`` does not keep the bot token it logged in
-    with, so a Telethon caller should pass ``token=...`` explicitly (the
-    ``nextgram.telethon`` adapter functions below do this automatically).
-    """
+    """Widgets always go over the plain Bot HTTP API, so all this needs is a bot token string — it has no dependency on which framework's client object is passed…"""
     if token:
         return token
     for attr in ("bot_token", "token", "_bot_token"):
@@ -600,12 +468,7 @@ def _resolve_token(client, token):
 
 
 async def _call_bot_api(client, method: str, payload: dict, *, token=None, api_base=None):
-    """POST one Bot HTTP API method and return its ``result``.
-
-    Raises :class:`WidgetAPIError` on a non-``ok`` response, and lets any
-    transport exception (connection error, timeout) propagate — callers
-    that want a fallback instead of an exception should catch around this.
-    """
+    """POST one Bot HTTP API method and return its ``result``."""
     import httpx
 
     resolved_token = _resolve_token(client, token)
@@ -623,12 +486,7 @@ async def _call_bot_api(client, method: str, payload: dict, *, token=None, api_b
 
 
 async def _try_native(client, method_name, kwargs) -> tuple[bool, Any]:
-    """Call ``client.<method_name>(**kwargs)`` if the client has it natively.
-
-    Returns ``(True, result)`` on success, ``(False, None)`` if the method
-    is absent or native calling failed (logged, not raised) so the caller
-    falls through to the HTTP path.
-    """
+    """Call ``client.<method_name>(**kwargs)`` if the client has it natively."""
     method = getattr(client, method_name, None) if WIDGET_NATIVE_AVAILABLE else None
     if method is None:
         return False, None
@@ -659,23 +517,7 @@ async def send_widget(
     token=None,
     api_base=None,
 ):
-    """Send a new widget (``sendWidget``).
-
-    ``html_text`` is the widget's full HTML source; it is checked against
-    the documented 4096-byte (zlib level 9 compressed) limit before
-    anything is sent. ``allow_queries=True`` lets the widget call
-    ``TelegramWidget.request(...)`` back to the bot (as a ``widget_query``
-    update); ``is_shared=True`` makes it a shared widget other chats can
-    re-send by id (``send_shared_widget``) and whose state is edited for
-    everyone at once (``edit_shared_widget_data``). ``width``/``height``
-    are logical pixels; ``0`` (or omitted) means automatic.
-
-    Returns the Bot API ``result`` (a dict with at least ``message_id``)
-    on success, or raises :class:`WidgetAPIError` / ``ValueError`` /
-    whatever the transport raises on failure — unlike ``rich_send``, this
-    does not swallow errors into ``None``, since a widget silently not
-    sent is a worse surprise than an exception.
-    """
+    """Send a new widget (``sendWidget``)."""
     validate_widget_html(html_text)
     kwargs = _only_set(
         chat_id=chat_id,
@@ -711,9 +553,7 @@ async def send_shared_widget(
     token=None,
     api_base=None,
 ):
-    """Re-send an existing shared widget by id (``sendSharedWidget``) —
-    "the way a photo is sent again by its file_id", per the guide.
-    """
+    """Re-send an existing shared widget by id (``sendSharedWidget``) — "the way a photo is sent again by its file_id", per the guide."""
     if not widget_id:
         raise ValueError("send_shared_widget needs a widget_id")
     kwargs = _only_set(
@@ -743,15 +583,7 @@ async def edit_message_widget_data(
     token=None,
     api_base=None,
 ):
-    """Edit a static widget message's state (``editMessageWidgetData``).
-
-    Addressed either by ``chat_id``+``message_id`` (a normal message) or
-    by ``inline_message_id`` (one sent via the bot inline) — exactly one
-    form, matching ``widget_query``'s own addressing. ``chat_data`` is
-    private per-chat state; ``public_data`` is shared state visible to
-    every viewer, mirroring the widget's own ``chatData``/``publicData``.
-    At least one of ``chat_data``/``public_data`` must be given.
-    """
+    """Edit a static widget message's state (``editMessageWidgetData``)."""
     has_chat_addr = chat_id is not None and message_id is not None
     if bool(has_chat_addr) == bool(inline_message_id):
         raise ValueError(
@@ -784,11 +616,7 @@ async def edit_shared_widget_data(
     token=None,
     api_base=None,
 ):
-    """Edit a shared widget's state for every viewer (``editSharedWidgetData``).
-
-    ``cache_time`` (5-3600 seconds, per the guide) sets how long clients
-    may keep showing the previous state before refreshing.
-    """
+    """Edit a shared widget's state for every viewer (``editSharedWidgetData``)."""
     if not widget_id:
         raise ValueError("edit_shared_widget_data needs a widget_id")
     cache_time = _validate_cache_time(cache_time)
@@ -810,17 +638,7 @@ async def answer_widget_query(
     token=None,
     api_base=None,
 ):
-    """Answer a ``widget_query`` (``answerWidgetQuery``).
-
-    ``data`` (optional, up to 1024 bytes) is what
-    ``TelegramWidget.request(...)``'s promise resolves with as
-    ``{result}`` on the widget side. The guide requires this call within
-    15 seconds of receiving the query; if ``received_at`` (a
-    ``time.time()`` timestamp taken when the query arrived) is given and
-    more than 15 seconds have passed, this raises ``ValueError``
-    immediately instead of making a call Telegram will reject as stale —
-    pass nothing to skip that check (e.g. if you track timing yourself).
-    """
+    """Answer a ``widget_query`` (``answerWidgetQuery``)."""
     if not widget_query_id:
         raise ValueError("answer_widget_query needs a widget_query_id")
     answer_data = _validate_answer_data(data)
@@ -842,28 +660,7 @@ async def answer_widget_query(
 
 
 def register_widget_query_handler(client, callback, *, shared: bool = False, filters=None, group: int = 0):
-    """Register ``callback`` for incoming ``widget_query`` (or, with
-    ``shared=True``, ``shared_widget_query``) updates, the same way
-    ``Client.on_widget_query``/``on_shared_widget_query`` would.
-
-    Wires in natively on Pyrogram/Pyrofork/Kurigram clients that ship
-    ``handlers.WidgetQueryHandler``/``SharedWidgetQueryHandler`` (checked
-    via :data:`WIDGET_HANDLER_NATIVE_AVAILABLE`) by calling
-    ``client.add_handler(...)`` directly — ``callback`` then receives
-    ``(client, widget_query)`` exactly like any other Pyrogram handler,
-    with ``widget_query`` already the client's own native
-    ``types.WidgetQuery``/``types.SharedWidgetQuery``, and ``filters``
-    accepted as a native ``pyrogram.filters.Filter`` if given.
-
-    aiogram, python-telegram-bot, Telethon and raw HTTP bots don't
-    dispatch these updates yet (this is a brand-new Bot API addition), so
-    for those this raises :class:`NotImplementedError` with a pointer to
-    polling manually: call ``getUpdates``/handle the webhook body yourself
-    and feed each update through :func:`extract_widget_query`.
-
-    Returns the created native handler object (useful for
-    ``client.remove_handler(...)`` later), or raises.
-    """
+    """Register ``callback`` for incoming ``widget_query`` (or, with ``shared=True``, ``shared_widget_query``) updates, the same way…"""
     if WIDGET_HANDLER_NATIVE_AVAILABLE and hasattr(client, "add_handler"):
         from pyrogram import handlers as _handlers
 

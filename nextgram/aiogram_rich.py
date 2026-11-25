@@ -1,14 +1,4 @@
-"""nextgram.aiogram_rich: rich messages and widgets for aiogram bots.
-
-aiogram is optional — importing ``nextgram`` never requires it, and this
-module has no import-time dependency on the ``aiogram`` package itself
-(it only reads a few attributes off whatever ``Bot``/``Message`` objects
-are passed in). Rich-message sending goes over the plain Bot HTTP API via
-``nextgram.http_rich`` (see that module's docstring for exactly what is
-confirmed vs. speculative); widgets go over the same HTTP API via
-``nextgram.widgets``, which already works with any client exposing a
-``.token`` attribute — aiogram's ``Bot`` does.
-"""
+"""nextgram.aiogram_rich: rich messages and widgets for aiogram bots."""
 from __future__ import annotations
 
 import logging
@@ -47,13 +37,7 @@ async def aiogram_rich_send(
     disable_notification=None,
     protect_content=None,
 ):
-    """Send rich HTML/Markdown to ``chat_id`` with an aiogram ``Bot``.
-
-    ``reply_markup`` accepts an aiogram ``InlineKeyboardMarkup`` (or any
-    object with ``.model_dump``/``.to_dict``) as well as a plain dict.
-    Returns the Bot API ``result`` dict (not an aiogram ``Message``) —
-    use ``result["message_id"]`` for the sent message's id.
-    """
+    """Send rich HTML/Markdown to ``chat_id`` with an aiogram ``Bot``."""
     token = aiogram_bot_token(bot)
     reply_parameters = (
         {"message_id": reply_to_message_id} if reply_to_message_id else None
@@ -72,11 +56,7 @@ async def aiogram_rich_send(
 
 
 async def aiogram_rich_reply(message, html_text: str, *, bot=None, **kwargs):
-    """Reply to an aiogram ``Message`` with rich HTML/Markdown.
-
-    ``bot`` defaults to ``message.bot`` (aiogram sets this on every
-    incoming message/update automatically).
-    """
+    """Reply to an aiogram ``Message`` with rich HTML/Markdown."""
     app = bot or getattr(message, "bot", None)
     chat = getattr(getattr(message, "chat", None), "id", None)
     if app is None or chat is None:
@@ -97,12 +77,7 @@ async def aiogram_rich_edit(
     markdown: bool = False,
     reply_markup=None,
 ):
-    """Edit a message to rich HTML/Markdown with an aiogram ``Bot``.
-
-    ``message`` is an aiogram ``Message`` (``.chat.id``/``.message_id``
-    read automatically) or ``None``, in which case ``chat_id`` and
-    ``message_id`` are required.
-    """
+    """Edit a message to rich HTML/Markdown with an aiogram ``Bot``."""
     if message is not None:
         app = bot or getattr(message, "bot", None)
         chat_id = getattr(getattr(message, "chat", None), "id", None)

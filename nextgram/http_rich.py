@@ -1,29 +1,4 @@
-"""nextgram.http_rich: raw Bot HTTP API rich-message sending.
-
-aiogram and python-telegram-bot have no MTProto layer at all — just a bot
-token and the plain Bot HTTP API — so ``nextgram.aiogram_rich`` and
-``nextgram.ptb_rich`` both build on this module instead of
-``nextgram.rich_ui``'s Pyrogram-native path. Sending calls the same
-``sendRichMessage`` HTTP endpoint ``nextgram.rich_ui._send_blocks_via_http``
-already uses for typed blocks, this time with a plain ``{"html": ...}``
-payload (the HTTP shape of ``InputRichMessage(html=...)``) instead of
-``blocks``. This is a real, already-used endpoint, not a new guess.
-
-Editing is less certain: there is no documented standalone
-``editRichMessage`` HTTP method, only Pyrogram's native, MTProto-level
-``edit_message_text(..., rich_message=...)``. :func:`edit_rich_html_via_http`
-tries the same ``rich_message`` field on the plain HTTP ``editMessageText``
-call — speculative, since it has never been confirmed against a live bot —
-and falls back to a plain-HTML edit on any failure, exactly as the send
-side falls back when ``sendRichMessage`` is rejected or unavailable.
-
-Buttons built with ``rich_button()``/``rich_button_row()`` are embedded
-*inside* the rich HTML and only become clickable when the rich payload is
-actually accepted and rendered that way by the Telegram client — if a send
-or edit falls back to plain HTML, those buttons degrade to plain text
-labels (via ``rich_ui._plain_fallback``), exactly as they do on the
-Pyrogram path when ``RICH_AVAILABLE`` is ``False``.
-"""
+"""HTTP rich messages with plain HTML fallback. Rich HTTP edits are unverified live."""
 from __future__ import annotations
 
 import logging
@@ -37,14 +12,7 @@ __all__ = ["send_rich_html_via_http", "edit_rich_html_via_http", "coerce_markup_
 
 
 def coerce_markup_to_dict(reply_markup):
-    """Turn a framework-native keyboard object into a plain JSON-able dict.
-
-    ``None``/dict pass through unchanged. aiogram v3's Pydantic models use
-    ``.model_dump(mode="json", exclude_none=True)``; python-telegram-bot's
-    use ``.to_dict()``; both are tried, in that order, before giving up and
-    returning the object as-is (letting the eventual JSON encode fail
-    loudly rather than silently dropping the keyboard).
-    """
+    """Turn a framework-native keyboard object into a plain JSON-able dict."""
     if reply_markup is None or isinstance(reply_markup, dict):
         return reply_markup
     for method_name, kwargs in (
@@ -78,16 +46,7 @@ async def send_rich_html_via_http(
     protect_content=None,
     api_base=None,
 ):
-    """POST ``sendRichMessage``, falling back to plain ``sendMessage``.
-
-    ``reply_markup``/``reply_parameters`` are plain JSON-able dicts (the
-    Bot API wire shape) — a caller holding a framework-native keyboard
-    object converts it first (aiogram: ``.model_dump(mode="json",
-    exclude_none=True)``; python-telegram-bot: ``.to_dict()``).
-
-    Returns the Bot API ``result`` dict (with ``message_id``) from
-    whichever call succeeds, or ``None`` if both fail.
-    """
+    """POST ``sendRichMessage``, falling back to plain ``sendMessage``."""
     if not html_text:
         return None
     wants_rich = bool(markdown or _has_rich_only_tags(html_text))
@@ -143,10 +102,7 @@ async def edit_rich_html_via_http(
     reply_markup: dict = None,
     api_base=None,
 ):
-    """POST ``editMessageText``, optimistically with ``rich_message`` set
-    first (see the module docstring: unconfirmed, may always fall
-    through), then a plain edit if that is rejected or fails outright.
-    """
+    """POST ``editMessageText``, optimistically with ``rich_message`` set first (see the module docstring: unconfirmed, may always fall through), then a plain edit…"""
     if not html_text:
         return None
     wants_rich = bool(markdown or _has_rich_only_tags(html_text))

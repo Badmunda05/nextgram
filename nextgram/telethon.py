@@ -1,26 +1,4 @@
-"""nextgram Telethon transport: Bot API 10.3 rich messages over MTProto.
-
-Pyrogram/Kurigram send rich messages through ``Client.send_rich_message``.
-Telethon has no such method, but the same rich payload travels over MTProto
-as a native request: ``messages.SendMessageRequest`` /
-``messages.EditMessageRequest`` with ``rich_message`` set to a
-``types.InputRichMessageHTML`` / ``InputRichMessageMarkdown`` /
-``types.InputRichMessage`` (blocks). The TL schema still requires the
-ordinary ``message`` field alongside the rich payload, so the adapter fills
-it with the same rich source text; it is not a second transport.
-
-This module is optional: ``telethon`` is an extra (``pip install
-nextgram[telethon]``) and importing ``nextgram`` never requires it. All
-HTML builders (``rich_heading``, ``rich_table``, ``rich_details``,
-``rich_emoji``, ...) are transport-independent, so the same text works on
-both transports; only the block objects differ (Telethon uses
-``PageBlock*`` types, Pyrogram uses ``InputRichBlock*`` types).
-
-On failure the adapter falls back to a plain Telethon ``send_message`` /
-``edit_message`` with the rich HTML converted by ``_plain_fallback``,
-mirroring ``rich_send``. Telethon's own HTML parser understands
-``<tg-emoji>``, so premium emoji survive the plain path too.
-"""
+"""nextgram Telethon transport: Bot API 10.3 rich messages over MTProto."""
 from __future__ import annotations
 
 import inspect
@@ -54,14 +32,7 @@ __all__ = [
 
 
 def _load_telethon():
-    """Return Telethon's (types, functions), or raise RuntimeError.
-
-    Existence is not enough: a stale or mismatched Telethon build can
-    carry ``SendMessageRequest`` without a ``rich_message`` parameter, and
-    every rich send then dies with ``TypeError: unexpected keyword
-    argument 'rich_message'``. The signatures are checked, not just the
-    names.
-    """
+    """Return Telethon's (types, functions), or raise RuntimeError."""
     try:
         from telethon import functions, types
     except ImportError as exc:
@@ -109,13 +80,7 @@ def _require_telethon():
 
 
 def _is_flood_wait(error) -> bool:
-    """True when the error is a Telethon rate-limit error.
-
-    Rate limits must never be swallowed by the generic handlers below:
-    a ``FloodWaitError`` turned into a silent ``None`` hides the limit,
-    and falling back to a plain send after one doubles the flood
-    pressure. Callers re-raise it instead.
-    """
+    """True when the error is a Telethon rate-limit error."""
     try:
         from telethon.errors import FloodWaitError
     except ImportError:
@@ -124,13 +89,7 @@ def _is_flood_wait(error) -> bool:
 
 
 async def _resolve_message(client, peer, result):
-    """Return the real Message for a raw send/edit result, or None.
-
-    A raw ``client(request)`` returns ``Updates``, where the message id
-    hides inside an ``UpdateMessageID`` / ``UpdateEditMessage`` update —
-    callers reading ``.id`` off the result itself get nothing. Prefer the
-    message carried by an update; otherwise fetch it by id.
-    """
+    """Return the real Message for a raw send/edit result, or None."""
     updates = getattr(result, "updates", None) or []
     for update in updates:
         message = getattr(update, "message", None)
@@ -152,12 +111,7 @@ async def _resolve_message(client, peer, result):
 
 def telethon_input_rich(html_text: str, *, markdown: bool = False,
                         is_rtl=None, skip_entity_detection=None):
-    """Build a Telethon ``InputRichMessage`` from HTML or Markdown text.
-
-    HTML is normalised the same way ``rich_send`` normalises it (legacy
-    ``<emoji id>`` becomes ``<tg-emoji emoji-id>``, newlines outside
-    verbatim blocks become ``<br/>``).
-    """
+    """Build a Telethon ``InputRichMessage`` from HTML or Markdown text."""
     types, _functions = _require_telethon()
     if not html_text:
         raise ValueError("telethon_input_rich needs non-empty text")
@@ -181,12 +135,7 @@ def telethon_send_request(peer, html_text: str, *, markdown: bool = False,
                          reply_to_msg_id=None, top_msg_id=None,
                          reply_markup=None, silent=None, no_webpage=None,
                          is_rtl=None, skip_entity_detection=None):
-    """Build a raw ``messages.SendMessageRequest`` carrying a rich message.
-
-    ``peer`` is passed through untouched: Telethon resolves ints, usernames
-    and ``InputPeer`` values itself when the request is invoked
-    (``client(request)``), and it generates ``random_id`` when it is absent.
-    """
+    """Build a raw ``messages.SendMessageRequest`` carrying a rich message."""
     _types, functions = _require_telethon()
     if not html_text:
         raise ValueError("telethon_send_request needs non-empty text")
@@ -240,14 +189,7 @@ def telethon_block_paragraph(text: str):
 
 
 def telethon_block_details(title: str, blocks, open: bool = False):
-    """A Telethon ``PageBlockDetails`` for use in ``telethon_rich_send_blocks``.
-
-    ``blocks`` is a list of Telethon ``PageBlock`` objects; nest another
-    ``telethon_block_details(...)`` inside it for nested collapsibles.
-    Note the argument order differs from Pyrogram's
-    ``InputRichBlockDetails(summary, blocks)``: Telethon's constructor is
-    ``PageBlockDetails(blocks, title, open)``.
-    """
+    """A Telethon ``PageBlockDetails`` for use in ``telethon_rich_send_blocks``."""
     types, _functions = _require_telethon()
     if not isinstance(title, str) or not title.strip():
         raise ValueError("a details block needs a non-empty title string")
@@ -259,12 +201,7 @@ def telethon_block_details(title: str, blocks, open: bool = False):
 
 
 def telethon_block_todo_list(items):
-    """A Telethon checklist block for use in ``telethon_rich_send_blocks``.
-
-    Builds a ``PageBlockList`` of ``PageListItemText`` items carrying
-    ``checkbox`` and ``checked`` — the Telethon form of the same native
-    checkboxes ``rich_todo_list`` and ``rich_block_todo_list`` produce.
-    """
+    """A Telethon checklist block for use in ``telethon_rich_send_blocks``."""
     types, _functions = _require_telethon()
     return types.PageBlockList(
         items=[
@@ -275,15 +212,7 @@ def telethon_block_todo_list(items):
 
 
 def telethon_block_preformatted(text, language: str = None):
-    """A Telethon preformatted block with nested inline formatting.
-
-    ``text`` is a plain string, or a list of segments — plain strings or
-    ``(kind, text)`` pairs with kind ``plain``/``bold``/``italic``/``code``,
-    the same segment model as ``rich_block_preformatted``. (Kurigram
-    ``RichText`` objects are not accepted here; use the tuple form.)
-    ``language`` is any string; Telethon's constructor requires it, so an
-    empty string is sent when none is given.
-    """
+    """A Telethon preformatted block with nested inline formatting."""
     types, _functions = _require_telethon()
     if language is not None and not isinstance(language, str):
         raise ValueError("a preformatted block's language must be a string")
@@ -316,14 +245,7 @@ async def telethon_rich_send_blocks(client, chat, blocks, *,
                                    reply_to_msg_id=None, top_msg_id=None,
                                    reply_markup=None, silent=None,
                                    no_webpage=None):
-    """Send Telethon ``PageBlock`` objects as one rich message.
-
-    Returns the sent Message, or ``None`` when there are no blocks, the
-    rich request fails, or the message cannot be resolved from the
-    result. Blocks have no plain-text equivalent, so unlike
-    ``telethon_rich_send`` there is no plain fallback here. A
-    ``FloodWaitError`` is re-raised, never swallowed.
-    """
+    """Send Telethon ``PageBlock`` objects as one rich message."""
     if not blocks:
         return None
     types, functions = _require_telethon()
@@ -351,16 +273,7 @@ async def telethon_rich_send(client, chat, html_text: str, *,
                             reply_markup=None, silent=None, no_webpage=None,
                             markdown: bool = False, is_rtl=None,
                             skip_entity_detection=None, **kwargs):
-    """Send rich HTML/Markdown with a Telethon client, falling back to plain.
-
-    Rich content goes out as a raw ``SendMessageRequest`` with
-    ``rich_message`` set. Plain text (no rich-only tags, no markdown) and
-    any rich request Telegram rejects go out as an ordinary Telethon
-    ``send_message`` with ``parse_mode="html"`` and the plain fallback text.
-    Both paths return the sent Message (resolved from the raw Updates
-    result on the rich path). A ``FloodWaitError`` is re-raised from
-    either path, never swallowed and never fallen back from.
-    """
+    """Send rich HTML/Markdown with a Telethon client, falling back to plain."""
     if not html_text:
         return None
     if kwargs:
@@ -430,11 +343,7 @@ async def telethon_rich_reply(message, html_text: str, *, client=None,
 
 async def telethon_rich_edit(target, html_text: str, *, client=None,
                             chat=None, message_id=None, **kwargs):
-    """Edit a message to rich text with a Telethon client.
-
-    ``target`` is a Telethon message (``.chat_id`` / ``.id``) or a client,
-    in which case ``chat`` and ``message_id`` are required.
-    """
+    """Edit a message to rich text with a Telethon client."""
     if not html_text:
         return None
 
