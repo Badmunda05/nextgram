@@ -1,3 +1,4 @@
+
 [build-system]
 requires = ["setuptools>=77.0"]
 build-backend = "setuptools.build_meta"
@@ -5,21 +6,37 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "nextgram"
 dynamic = ["version", "readme"]
-description = "nextgram: Telegram Bot API 10.3 rich messages and 10.4 HTML widgets, for Pyrogram, Pyrofork, Kurigram, Telethon, aiogram and python-telegram-bot bots"
+description = "Telegram rich messages and interactive HTML widgets for six bot frameworks."
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
+
 authors = [
-  { name = "BadmundaXd", email = "munda.bad1322@gmail.com" }
+    { name = "BadmundaXd", email = "munda.bad1322@gmail.com" }
 ]
-keywords = ["telegram", "rich message", "bot api", "widgets", "pyrogram", "pyrofork", "kurigram", "telethon", "aiogram", "python-telegram-bot", "inline buttons"]
+
+keywords = [
+    "telegram",
+    "bot-api",
+    "rich-messages",
+    "widgets",
+    "pyrogram",
+    "pyrofork",
+    "kurigram",
+    "telethon",
+    "aiogram",
+    "python-telegram-bot",
+    "inline-buttons",
+]
+
 classifiers = [
-  "Operating System :: OS Independent",
-  "Programming Language :: Python",
-  "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3 :: Only",
-  "Topic :: Communications :: Chat",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Communications :: Chat",
 ]
+
 dependencies = ["httpx"]
 
 [project.optional-dependencies]
@@ -27,12 +44,24 @@ pyrogram = ["kurigram"]
 telethon = ["telethon>=1.45"]
 aiogram = ["aiogram>=3.0"]
 ptb = ["python-telegram-bot>=21.0"]
-all = ["kurigram", "telethon>=1.45", "aiogram>=3.0", "python-telegram-bot>=21.0"]
-test = ["pytest>=8", "pytest-asyncio>=0.24", "telethon>=1.45", "kurigram"]
+
+all = [
+    "kurigram",
+    "telethon>=1.45",
+    "aiogram>=3.0",
+    "python-telegram-bot>=21.0",
+]
+
+test = [
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "telethon>=1.45",
+    "kurigram",
+]
 
 [project.urls]
 Homepage = "https://github.com/Badmunda05/nextgram"
-Source   = "https://github.com/Badmunda05/nextgram"
+Source = "https://github.com/Badmunda05/nextgram"
 Telegram = "https://t.me/BadmundaXd"
 
 [tool.setuptools]
@@ -40,15 +69,16 @@ packages = ["nextgram"]
 
 [tool.setuptools.dynamic]
 version = { attr = "nextgram.__version__" }
-readme  = { file = ["README.md"], content-type = "text/markdown" }
+readme = { file = ["README.md"], content-type = "text/markdown" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--strict-markers"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+
 markers = [
-  "unit: fast, no network and no Telegram client",
-  "guard: asserts a property of the repository rather than one module",
-  "integration: talks to the real Telegram API (needs API_ID, API_HASH, BOT_TOKEN, CHAT_ID)",
+    "unit: offline unit tests",
+    "guard: repository checks",
+    "integration: live Telegram API tests",
 ]
